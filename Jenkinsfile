@@ -44,7 +44,7 @@ pipeline {
         stage('Prepare Release Assets') {
             when {
                 allOf {
-                    expression { env.BRANCH_NAME ==~ /^\d+\.\d+\.\d+$/ }
+                    expression { env.BRANCH_NAME ==~ /^\d+\.\d+(\.\d+)?$/ }
                     expression { !env.CHANGE_ID }
                 }
             }
@@ -80,7 +80,7 @@ pipeline {
         stage('GitHub Release') {
             when {
                 allOf {
-                    expression { env.BRANCH_NAME ==~ /^\d+\.\d+\.\d+$/ }
+                    expression { env.BRANCH_NAME ==~ /^\d+\.\d+(\.\d+)?$/ }
                     expression { fileExists('release.env') }
                     expression { !env.CHANGE_ID }
                 }
@@ -138,7 +138,7 @@ pipeline {
         stage('Modrinth Release') {
             when {
                 allOf {
-                    expression { env.BRANCH_NAME ==~ /^\d+\.\d+\.\d+$/ }
+                    expression { env.BRANCH_NAME ==~ /^\d+\.\d+(\.\d+)?$/ }
                     expression { fileExists('release.env') }
                     expression { !env.CHANGE_ID }
                 }
