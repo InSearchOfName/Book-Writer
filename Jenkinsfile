@@ -82,24 +82,24 @@ pipeline {
                             git config user.name "${GIT_USER}"
 
                             git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
-                            git push https://${GIT_USER}:${GIT_PASS}@github.com/InSearchOfName/book-writer.git "$TAG_NAME"
+                            git push https://${GIT_USER}:${GIT_PASS}@github.com/InSearchOfName/Book-Writer.git "$TAG_NAME"
 
-                            RELEASE_RESPONSE=$(curl -s -X POST \
+                            RELEASE_PAYLOAD=$(jq -n \
+                                --arg tag_name "$TAG_NAME" \
+                                --arg name "Release $TAG_NAME" \
+                                '{tag_name: $tag_name, name: $name, generate_release_notes: true}')
+
+                            RELEASE_RESPONSE=$(curl -sS -X POST \
                             -H "Accept: application/vnd.github.v3+json" \
                             -H "Authorization: token ${GIT_PASS}" \
-                            https://api.github.com/repos/InSearchOfName/book-writer/releases \
-                            -d "{
-                                \\"tag_name\\": \\"${TAG_NAME}\\",
-                                \\"name\\": \\"Release ${TAG_NAME}\\",
-                                \\"generate_release_notes\\": true
-                            }")
+                            https://api.github.com/repos/InSearchOfName/Book-Writer/releases \
+                            -d "$RELEASE_PAYLOAD")
 
-                            UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | jq -r '.upload_url' | sed 's/{.*}//')
-                            CHANGELOG=$(echo "$RELEASE_RESPONSE" | jq -r '.body')
+                            UPLOAD_URL=$(printf '%s' "$RELEASE_RESPONSE" | jq -r '.upload_url' | sed 's/{.*}//')
+                            CHANGELOG=$(printf '%s' "$RELEASE_RESPONSE" | jq -r '.body')
 
-                            echo "CHANGELOG<<EOF" >> release.env
-                            echo "$CHANGELOG" >> release.env
-                            echo "EOF" >> release.env
+                            CHANGELOG_B64=$(printf '%s' "$CHANGELOG" | base64 | tr -d '\n')
+                            echo "CHANGELOG_B64=$CHANGELOG_B64" >> release.env
 
                             for FILE in "$MAIN_JAR" "$SOURCES_JAR"; do
                                 NAME=$(basename "$FILE")
@@ -136,26 +136,39 @@ pipeline {
                             set -e
                             . "$WORKSPACE/release.env"
 
+                            if [ -n "${CHANGELOG_B64:-}" ]; then
+                                CHANGELOG=$(printf '%s' "$CHANGELOG_B64" | base64 -d)
+                            else
+                                CHANGELOG=""
+                            fi
+
+                            MODRINTH_DATA=$(jq -n \
+                                --arg name "Version $APP_VERSION" \
+                                --arg version_number "$APP_VERSION" \
+                                --arg changelog "$CHANGELOG" \
+                                --arg game_version "$BRANCH_NAME" \
+                                '{
+                                    name: $name,
+                                    version_number: $version_number,
+                                    changelog: $changelog,
+                                    dependencies: [
+                                        {project_id: "P7dR8mSH", dependency_type: "required"},
+                                        {project_id: "ccKDOlHs", dependency_type: "required"}
+                                    ],
+                                    game_versions: [$game_version],
+                                    version_type: "release",
+                                    loaders: ["fabric"],
+                                    featured: true,
+                                    status: "listed",
+                                    requested_status: null,
+                                    project_id: "yn4qgdpm",
+                                    file_parts: ["main", "sources"],
+                                    primary_file: "main"
+                                }')
+
                             curl --fail --location 'https://api.modrinth.com/v2/version' \
                             --header "Authorization: ${MODRINTH_TOKEN}" \
-                            --form 'data="{
-                                \\"name\\": \\"Version '"${APP_VERSION}"'\\",
-                                \\"version_number\\": \\"'"${APP_VERSION}"'\\",
-                                \\"changelog\\": \\"'"${CHANGELOG}"'\\",
-                                \\"dependencies\\": [
-                                    {\\"project_id\\":\\"P7dR8mSH\\",\\"dependency_type\\":\\"required\\"},
-                                    {\\"project_id\\":\\"ccKDOlHs\\",\\"dependency_type\\":\\"required\\"}
-                                ],
-                                \\"game_versions\\": [\\"'"${BRANCH_NAME}"'\\"],
-                                \\"version_type\\": \\"release\\",
-                                \\"loaders\\": [\\"fabric\\"],
-                                \\"featured\\": true,
-                                \\"status\\": \\"listed\\",
-                                \\"requested_status\\": null,
-                                \\"project_id\\": \\"yn4qgdpm\\",
-                                \\"file_parts\\": [\\"main\\",\\"sources\\"],
-                                \\"primary_file\\": \\"main\\"
-                            }"' \
+                            --form "data=$MODRINTH_DATA" \
                             --form "main=@${MAIN_JAR}" \
                             --form "sources=@${SOURCES_JAR}"
                         '''
