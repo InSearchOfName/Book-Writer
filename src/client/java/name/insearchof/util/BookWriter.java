@@ -28,9 +28,8 @@ public class BookWriter {
      * @param title   The title for the book(s)
      * @param content The content to write
      * @param player  The player writing the book
-     * @return true if writing started successfully, false otherwise
      */
-    public static boolean writeAndSignBook(String title, String content, PlayerEntity player) {
+    public static void writeAndSignBook(String title, String content, PlayerEntity player) {
         String[] pages = splitIntoPages(content);
         List<Integer> bookSlots = findAvailableBooks(player);
 
@@ -38,11 +37,10 @@ public class BookWriter {
         if (bookSlots.size() < booksNeeded) {
             notifyPlayer(player, String.format("§c§lNot enough books! §r§7Need: %d, Have: %d",
                     booksNeeded, bookSlots.size()));
-            return false;
+            return;
         }
 
         writeAsync(title, pages, bookSlots, player, booksNeeded);
-        return true;
     }
 
     private static void writeAsync(String title, String[] pages, List<Integer> bookSlots,

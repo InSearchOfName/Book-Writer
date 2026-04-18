@@ -1,6 +1,6 @@
 package name.insearchof.command;
 
-import name.insearchof.screen.WriteScreen;
+import name.insearchof.UI.BookWriterUI;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.minecraft.client.MinecraftClient;
 
@@ -17,7 +17,7 @@ public class CommandHandler {
         }
 
         MinecraftClient client = MinecraftClient.getInstance();
-        client.execute(() -> client.setScreen(new WriteScreen()));
+        client.execute(() -> client.setScreen(new BookWriterUI()));
         return false;
     }
 }
