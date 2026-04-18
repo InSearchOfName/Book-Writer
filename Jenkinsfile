@@ -168,7 +168,7 @@ pipeline {
                                 --arg changelog "$CHANGELOG" \
                                 --arg game_version "$BRANCH_NAME" \
                                 '{
-                                    name: ($name + "-" + $game_version),
+                                    name: ($name + " - " + $game_version),
                                     version_number: $version_number,
                                     changelog: $changelog,
                                     dependencies: [
