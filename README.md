@@ -24,7 +24,7 @@ A clean, client-side Minecraft Fabric mod that allows you to quickly write text 
 
 - **Page Limit**: 256 characters per page
 - **Book Limit**: 100 pages per book
-- **Supported Version**: Minecraft 1.21.11
+- **Supported Version**: Minecraft 26.1
 - **Architecture**: Pure client-side, event-driven
 
 ## Code Structure

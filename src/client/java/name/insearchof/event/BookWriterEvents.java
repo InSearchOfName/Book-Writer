@@ -2,7 +2,7 @@ package name.insearchof.event;
 
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.world.entity.player.Player;
 
 public class BookWriterEvents {
     public static final Event<WriteBook> WRITE_BOOK = EventFactory.createArrayBacked(
@@ -16,6 +16,6 @@ public class BookWriterEvents {
 
     @FunctionalInterface
     public interface WriteBook {
-        void onWriteBook(PlayerEntity player, String title, String content);
+        void onWriteBook(Player player, String title, String content);
     }
 }

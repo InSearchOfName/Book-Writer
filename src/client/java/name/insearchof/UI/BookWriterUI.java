@@ -9,7 +9,9 @@ import io.wispforest.owo.ui.container.UIContainers;
 import io.wispforest.owo.ui.core.*;
 import name.insearchof.event.BookWriterEvents;
 import name.insearchof.util.InventoryUtils;
-import net.minecraft.text.Text;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
 
 
@@ -42,29 +44,29 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
 
         // Title section
         rootComponent.child(
-                UIComponents.label(Text.literal("Book Title:"))
+            UIComponents.label(Component.literal("Book Title:"))
                 .margins(Insets.bottom(3))
         );
 
         titleField = UIComponents.textArea(Sizing.fill(100), Sizing.fixed(20));
         titleField.maxLines(1);
-        titleField.setMaxLength(TITLE_MAX_LENGTH);
-        titleField.text(storedTitle);
+        titleField.setCharacterLimit(TITLE_MAX_LENGTH);
+        titleField.setValue(storedTitle);
         rootComponent.child(titleField.margins(Insets.bottom(8)));
 
         // Content section
         rootComponent.child(
-                UIComponents.label(Text.literal("Content:"))
+            UIComponents.label(Component.literal("Content:"))
                 .margins(Insets.bottom(3))
         );
 
         textField = UIComponents.textArea(Sizing.fill(100), Sizing.fill(55));
-        textField.setMaxLength(TEXT_MAX_LENGTH);
-        textField.text(storedText);
+        textField.setCharacterLimit(TEXT_MAX_LENGTH);
+        textField.setValue(storedText);
         rootComponent.child(textField.margins(Insets.bottom(8)));
 
         // Character count
-        charCountLabel = UIComponents.label(Text.literal("Characters: 0"));
+        charCountLabel = UIComponents.label(Component.literal("Characters: 0"));
         charCountLabel.margins(Insets.bottom(6));
         rootComponent.child(charCountLabel);
 
@@ -74,17 +76,17 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
         buttonContainer.gap(10);
 
         buttonContainer.child(
-                UIComponents.button(Text.literal("Write to Book"), button -> onWriteClick())
+            UIComponents.button(Component.literal("Write to Book"), button -> onWriteClick())
                         .sizing(Sizing.fixed(100), Sizing.fixed(20))
         );
 
         buttonContainer.child(
-                UIComponents.button(Text.literal("Calculate"), button -> onCalculateClick())
+            UIComponents.button(Component.literal("Calculate"), button -> onCalculateClick())
                         .sizing(Sizing.fixed(100), Sizing.fixed(20))
         );
 
         buttonContainer.child(
-                UIComponents.button(Text.literal("Clear"), button -> onClearClick())
+            UIComponents.button(Component.literal("Clear"), button -> onClearClick())
                         .sizing(Sizing.fixed(100), Sizing.fixed(20))
         );
 
@@ -96,60 +98,65 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
         super.tick();
         // Update character count display
         if (charCountLabel != null && textField != null) {
-            charCountLabel.text(Text.literal("Characters: " + textField.getText().length()));
+            charCountLabel.text(Component.literal("Characters: " + textField.getValue().length()));
         }
     }
 
     private void onWriteClick() {
-        String text = textField.getText();
-        String title = titleField.getText();
+        String text = textField.getValue();
+        String title = titleField.getValue();
 
         if (text.isEmpty()) {
-            if (this.client != null && this.client.player != null) {
-                this.client.player.sendMessage(Text.literal("§cNo text to write!"), true);
+            var client = Minecraft.getInstance();
+            if (client.player != null) {
+                client.gui.setOverlayMessage(Component.literal("No text to write!").withStyle(ChatFormatting.RED), false);
             }
-            this.close();
+            Minecraft.getInstance().setScreen(null);
             return;
         }
 
-        if (this.client == null || this.client.player == null) {
+        var client = Minecraft.getInstance();
+        if (client.player == null) {
             return;
         }
 
         int booksNeeded = calculateBooksNeeded(text.length());
-        int booksAvailable = InventoryUtils.countWritableBooks(this.client.player);
+        int booksAvailable = InventoryUtils.countWritableBooks(client.player);
 
         if (booksAvailable < booksNeeded) {
-            String message = String.format("§c§lNot enough books! §r§7Need: %d, Have: %d", booksNeeded, booksAvailable);
-            this.client.player.sendMessage(Text.literal(message), true);
-            this.close();
+            Component message = Component
+                    .literal(String.format("Not enough books! Need: %d, Have: %d", booksNeeded, booksAvailable))
+                    .withStyle(ChatFormatting.RED);
+                client.gui.setOverlayMessage(message, false);
+            Minecraft.getInstance().setScreen(null);
             return;
         }
 
-        BookWriterEvents.WRITE_BOOK.invoker().onWriteBook(this.client.player, title, text);
+        BookWriterEvents.WRITE_BOOK.invoker().onWriteBook(client.player, title, text);
         storedText = text;
         storedTitle = title;
-        this.close();
+        Minecraft.getInstance().setScreen(null);
     }
 
     private void onCalculateClick() {
-        String text = textField.getText();
+        String text = textField.getValue();
         int totalPages = calculateTotalPages(text.length());
         int booksNeeded = calculateBooksNeeded(text.length());
 
-        if (this.client == null || this.client.player == null) {
+        var client = Minecraft.getInstance();
+        if (client.player == null) {
             return;
         }
 
-        int booksAvailable = InventoryUtils.countWritableBooks(this.client.player);
-        String message = formatCalculateMessage(booksNeeded, booksAvailable, totalPages);
-        this.client.player.sendMessage(Text.literal(message), true);
-        this.close();
+        int booksAvailable = InventoryUtils.countWritableBooks(client.player);
+        Component message = formatCalculateMessage(booksNeeded, booksAvailable, totalPages);
+        client.gui.setOverlayMessage(message, false);
+        Minecraft.getInstance().setScreen(null);
     }
 
     private void onClearClick() {
-        textField.text("");
-        titleField.text("Book");
+        textField.setValue("");
+        titleField.setValue("Book");
     }
 
     private int calculateTotalPages(int charCount) {
@@ -162,15 +169,19 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
         return (int) Math.ceil((double) totalPages / MAX_PAGES_PER_BOOK);
     }
 
-    private String formatCalculateMessage(int booksNeeded, int booksAvailable, int totalPages) {
+    private Component formatCalculateMessage(int booksNeeded, int booksAvailable, int totalPages) {
         if (booksAvailable < booksNeeded) {
-            return String.format("§c§lNot enough books! §r§7Need: %d, Have: %d", booksNeeded, booksAvailable);
+            return Component
+                    .literal(String.format("Not enough books! Need: %d, Have: %d", booksNeeded, booksAvailable))
+                    .withStyle(ChatFormatting.RED);
         }
-        return String.format("§a§lBooks Needed: %d §r§7(%d pages)", booksNeeded, totalPages);
+        return Component
+                .literal(String.format("Books Needed: %d (%d pages)", booksNeeded, totalPages))
+                .withStyle(ChatFormatting.GREEN);
     }
 
     @Override
-    public boolean shouldPause() {
+    public boolean isPauseScreen() {
         return false;
     }
 }

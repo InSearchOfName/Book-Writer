@@ -1,12 +1,13 @@
 package name.insearchof.util;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.network.packet.c2s.play.BookUpdateC2SPacket;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ServerboundEditBookPacket;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,14 +30,18 @@ public class BookWriter {
      * @param content The content to write
      * @param player  The player writing the book
      */
-    public static void writeAndSignBook(String title, String content, PlayerEntity player) {
+    public static void writeAndSignBook(String title, String content, Player player) {
         String[] pages = splitIntoPages(content);
         List<Integer> bookSlots = findAvailableBooks(player);
 
         int booksNeeded = calculateBooksNeeded(pages.length);
         if (bookSlots.size() < booksNeeded) {
-            notifyPlayer(player, String.format("§c§lNot enough books! §r§7Need: %d, Have: %d",
-                    booksNeeded, bookSlots.size()));
+            notifyPlayer(
+                player,
+                Component
+                    .literal(String.format("Not enough books! Need: %d, Have: %d", booksNeeded, bookSlots.size()))
+                    .withStyle(ChatFormatting.RED)
+            );
             return;
         }
 
@@ -44,9 +49,9 @@ public class BookWriter {
     }
 
     private static void writeAsync(String title, String[] pages, List<Integer> bookSlots,
-                                   PlayerEntity player, int booksNeeded) {
+                                   Player player, int booksNeeded) {
         new Thread(() -> {
-            notifyPlayer(player, "§6§lStand still while writing books...");
+            notifyPlayer(player, Component.literal("Stand still while writing books...").withStyle(ChatFormatting.GOLD));
 
             for (int bookIndex = 0; bookIndex < booksNeeded; bookIndex++) {
                 int startPage = bookIndex * MAX_PAGES_PER_BOOK;
@@ -57,7 +62,10 @@ public class BookWriter {
 
                 sendBookPacket(bookSlots.get(bookIndex), bookPages, bookTitle, player);
 
-                notifyPlayer(player, String.format("§6Book %d of %d written", bookIndex + 1, booksNeeded));
+                notifyPlayer(
+                    player,
+                    Component.literal(String.format("Book %d of %d written", bookIndex + 1, booksNeeded)).withStyle(ChatFormatting.GOLD)
+                );
 
                 if (bookIndex < booksNeeded - 1) {
                     delayNextWrite();
@@ -79,10 +87,10 @@ public class BookWriter {
         return pages.isEmpty() ? new String[]{""} : pages.toArray(new String[0]);
     }
 
-    private static List<Integer> findAvailableBooks(PlayerEntity player) {
+    private static List<Integer> findAvailableBooks(Player player) {
         List<Integer> slots = new ArrayList<>();
-        for (int i = 0; i < player.getInventory().size(); i++) {
-            ItemStack stack = player.getInventory().getStack(i);
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            ItemStack stack = player.getInventory().getItem(i);
             if (stack.getItem() == Items.WRITABLE_BOOK) {
                 slots.add(i);
             }
@@ -107,15 +115,16 @@ public class BookWriter {
         return pages;
     }
 
-    private static void sendBookPacket(int slot, List<String> pages, String title, PlayerEntity player) {
-        BookUpdateC2SPacket packet = new BookUpdateC2SPacket(slot, pages, Optional.of(title));
-        MinecraftClient.getInstance().getNetworkHandler().sendPacket(packet);
+    private static void sendBookPacket(int slot, List<String> pages, String title, Player player) {
+        var client = Minecraft.getInstance();
+        if (client.getConnection() == null) return;
+
+        ServerboundEditBookPacket packet = new ServerboundEditBookPacket(slot, pages, Optional.of(title));
+        client.execute(() -> client.getConnection().send(packet));
     }
 
-    private static void notifyPlayer(PlayerEntity player, String message) {
-        MinecraftClient.getInstance().execute(() ->
-                player.sendMessage(Text.literal(message), true)
-        );
+    private static void notifyPlayer(Player player, Component message) {
+        Minecraft.getInstance().execute(() -> Minecraft.getInstance().gui.setOverlayMessage(message, false));
     }
 
     private static void delayNextWrite() {
@@ -126,11 +135,9 @@ public class BookWriter {
         }
     }
 
-    private static void completeWriting(PlayerEntity player) {
-        notifyPlayer(player, "§a§lAll books written!");
-        MinecraftClient.getInstance().execute(() ->
-                player.playSound(SoundEvents.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f)
-        );
+    private static void completeWriting(Player player) {
+        notifyPlayer(player, Component.literal("All books written!").withStyle(ChatFormatting.GREEN));
+        Minecraft.getInstance().execute(() -> player.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f));
     }
 }
 

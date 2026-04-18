@@ -1,7 +1,7 @@
 package name.insearchof.event;
 
 import name.insearchof.util.BookWriter;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.world.entity.player.Player;
 
 public class BookWriterEventHandler {
     private BookWriterEventHandler() {
@@ -12,7 +12,7 @@ public class BookWriterEventHandler {
         BookWriterEvents.WRITE_BOOK.register(BookWriterEventHandler::handleWriteBook);
     }
 
-    private static void handleWriteBook(PlayerEntity player, String title, String content) {
+    private static void handleWriteBook(Player player, String title, String content) {
         BookWriter.writeAndSignBook(title, content, player);
     }
 }
