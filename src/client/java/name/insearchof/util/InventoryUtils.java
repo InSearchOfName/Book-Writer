@@ -1,17 +1,17 @@
 package name.insearchof.util;
 
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Items;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Items;
 
 public class InventoryUtils {
     private InventoryUtils() {
         // Utility class
     }
 
-    public static int countWritableBooks(PlayerEntity player) {
+    public static int countWritableBooks(Player player) {
         int count = 0;
-        for (int i = 0; i < player.getInventory().size(); i++) {
-            if (player.getInventory().getStack(i).getItem() == Items.WRITABLE_BOOK) {
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            if (player.getInventory().getItem(i).getItem() == Items.WRITABLE_BOOK) {
                 count++;
             }
         }
