@@ -33,38 +33,39 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
 
     @Override
     protected void build(FlowLayout rootComponent) {
+        rootComponent.sizing(Sizing.fill(100), Sizing.fill(100));
         rootComponent
-                .surface(Surface.VANILLA_TRANSLUCENT)
-                .horizontalAlignment(HorizontalAlignment.LEFT)
-                .verticalAlignment(VerticalAlignment.TOP)
-                .padding(Insets.of(20));
+            .surface(Surface.VANILLA_TRANSLUCENT)
+            .horizontalAlignment(HorizontalAlignment.LEFT)
+            .verticalAlignment(VerticalAlignment.TOP)
+            .padding(Insets.of(8));
 
         // Title section
         rootComponent.child(
                 UIComponents.label(Text.literal("Book Title:"))
-                        .margins(Insets.bottom(5))
+                .margins(Insets.bottom(3))
         );
 
         titleField = UIComponents.textArea(Sizing.fill(100), Sizing.fixed(20));
         titleField.maxLines(1);
         titleField.setMaxLength(TITLE_MAX_LENGTH);
         titleField.text(storedTitle);
-        rootComponent.child(titleField.margins(Insets.bottom(15)));
+        rootComponent.child(titleField.margins(Insets.bottom(8)));
 
         // Content section
         rootComponent.child(
                 UIComponents.label(Text.literal("Content:"))
-                        .margins(Insets.bottom(5))
+                .margins(Insets.bottom(3))
         );
 
-        textField = UIComponents.textArea(Sizing.fill(100), Sizing.fill(70));
+        textField = UIComponents.textArea(Sizing.fill(100), Sizing.fill(55));
         textField.setMaxLength(TEXT_MAX_LENGTH);
         textField.text(storedText);
-        rootComponent.child(textField.margins(Insets.bottom(15)));
+        rootComponent.child(textField.margins(Insets.bottom(8)));
 
         // Character count
         charCountLabel = UIComponents.label(Text.literal("Characters: 0"));
-        charCountLabel.margins(Insets.bottom(15));
+        charCountLabel.margins(Insets.bottom(6));
         rootComponent.child(charCountLabel);
 
         // Button container
