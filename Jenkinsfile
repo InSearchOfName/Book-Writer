@@ -138,7 +138,7 @@ pipeline {
                             \\"name\\": \\"Version '"${APP_VERSION}"'\\",
                             \\"version_number\\": \\"'"${APP_VERSION}"'\\",
                             \\"changelog\\": \\"Automated release '"${TAG_NAME}"'\\",
-                            \\"dependencies\\": [{\\"project_id\\":\\"P7dR8mSH\\",\\"dependency_type\\":\\"required\\"}],
+                            \\"dependencies\\": [{\\"project_id\\":\\"P7dR8mSH\\",\\"dependency_type\\":\\"required\\"},{\\"project_id\\":\\"ccKDOlHs\\",\\"dependency_type\\":\\"required\\"}],
                             \\"game_versions\\": [\\"'"${BRANCH_NAME}"'\\"],
                             \\"version_type\\": \\"release\\",
                             \\"loaders\\": [\\"fabric\\"],
