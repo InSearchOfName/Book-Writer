@@ -23,7 +23,6 @@ pipeline {
                     if (commitMsgLower.contains("[skip ci]") || commitMsgLower.contains("[ci skip]")) {
                         echo "Skipping build due to commit message"
                         currentBuild.result = 'NOT_BUILT'
-                        return
                     }
                 }
             }
