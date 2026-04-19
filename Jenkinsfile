@@ -1,3 +1,4 @@
+@Library("InSearchOfName's-Library") _
 pipeline {
     agent any
 
@@ -36,8 +37,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'chmod +x ./gradlew'
-                sh './gradlew clean build'
+                java.buildGradle()
             }
         }
 
