@@ -37,7 +37,9 @@ pipeline {
 
         stage('Build') {
             steps {
-                java.buildGradle()
+                script {
+                    java.buildGradle()
+                }
             }
         }
 
