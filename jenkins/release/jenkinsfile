@@ -1,0 +1,135 @@
+@Library("InSearchOfName's-Library") _
+pipeline {
+    agent {
+        label 'docker-agent'
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        stage('build') {
+            steps {
+                script {
+                    java.buildGradle(tasks: 'clean build')
+
+                    // Derive GitHub owner/repo dynamically from the checked-out SCM remote.
+                    String originUrl = sh(
+                        script: 'git config --get remote.origin.url',
+                        returnStdout: true
+                    ).trim()
+                    if (!originUrl?.trim()) { error('Unable to determine remote.origin.url') }
+
+                    def gh = gitUtils.parseGithubOwnerRepo(originUrl)
+                    env.GITHUB_OWNER = gh.owner
+                    env.GITHUB_REPO = gh.repo
+
+                    // Workflow-owned release inputs (no shared-library defaults).
+                    env.APP_VERSION = sh(
+                        script: './gradlew -q properties 2>/dev/null | sed -n "s/^version: //p" | head -n 1',
+                        returnStdout: true
+                    ).trim()
+                    if (!env.APP_VERSION?.trim()) { error('Unable to determine APP_VERSION from Gradle') }
+
+                    env.MAIN_JAR = sh(
+                        script: 'ls -1 build/libs/*.jar 2>/dev/null | grep -vE "(-sources|-javadoc|-dev)\\.jar$" | head -n 1',
+                        returnStdout: true
+                    ).trim()
+                    if (!env.MAIN_JAR?.trim()) { error('Unable to determine MAIN_JAR from build/libs') }
+
+                    env.SOURCES_JAR = sh(
+                        script: 'ls -1 build/libs/*-sources.jar 2>/dev/null | head -n 1 || true',
+                        returnStdout: true
+                    ).trim()
+
+                    env.BRANCH_NO_V = (env.BRANCH_NAME ?: '').replaceFirst(/^v/, '')
+                    if (!env.BRANCH_NO_V?.trim()) { error('BRANCH_NAME is required to derive BRANCH_NO_V') }
+
+                    env.RELEASE_NAME = 'Release ' + env.BRANCH_NO_V + '-' + env.APP_VERSION
+                    env.TAG_NAME = env.BRANCH_NO_V + '-' + env.APP_VERSION
+                }
+            }
+        }
+        stage('publish to github') {
+            steps {
+                script {
+                    gitUtils.withGithubCredentials(credentialsId: 'github', usernameVariable: 'GIT_USER', tokenVariable: 'GIT_PASS') {
+                        gitUtils.configureUser(name: 'Jenkins', email: 'jenkins@insearchof.name')
+                        gitUtils.tagAndPush(
+                            tagName: env.TAG_NAME,
+                            message: env.RELEASE_NAME,
+                            owner: env.GITHUB_OWNER,
+                            repo: env.GITHUB_REPO,
+                            force: true
+                        )
+
+                        githubRelease(
+                            tokenEnvVar: 'GIT_PASS',
+                            owner: env.GITHUB_OWNER,
+                            repo: env.GITHUB_REPO,
+                            tagName: env.TAG_NAME,
+                            releaseName: env.RELEASE_NAME,
+                            generateReleaseNotes: true,
+                            draft: false,
+                            prerelease: false,
+                            assets: ([
+                                [path: env.MAIN_JAR],
+                                (env.SOURCES_JAR?.trim() ? [path: env.SOURCES_JAR] : null)
+                            ].findAll { it != null })
+                        ).with { rel ->
+                            writeFile file: '.modrinth_changelog.txt', text: (rel.body ?: '').toString(), encoding: 'UTF-8'
+                            echo('Created release id=' + rel.id + ' url=' + rel.html_url)
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('publish to modrinth') {
+            steps {
+                script {
+                    if (!env.MAIN_JAR?.trim()) { error('Missing MAIN_JAR (set in build stage)') }
+                    if (!env.APP_VERSION?.trim()) { error('Missing APP_VERSION (set in build stage)') }
+                    if (!env.BRANCH_NO_V?.trim()) { error('Missing BRANCH_NO_V (set in build stage)') }
+                    if (!env.RELEASE_NAME?.trim()) { error('Missing RELEASE_NAME (set in build stage)') }
+
+                    List<String> fileParts = ['main']
+                    Map publishArgs = [
+                        tokenEnvVar: 'MODRINTH_TOKEN',
+                        projectId: 'yn4qgdpm',
+                        name: env.RELEASE_NAME,
+                        mainJar: env.MAIN_JAR,
+                        versionNumber: env.APP_VERSION,
+                        gameVersion: env.BRANCH_NO_V,
+                        changelog: readFile('.modrinth_changelog.txt'),
+                        dependencies: [
+                            {project_id: "P7dR8mSH", dependency_type: "required"},
+                            {project_id: "ccKDOlHs", dependency_type: "required"}
+                            ],
+                        loaders: ['fabric'],
+                        versionType: 'release',
+                        featured: true,
+                        status: 'listed',
+                        primaryFile: 'main'
+                    ]
+
+                    if (env.SOURCES_JAR?.trim()) {
+                        publishArgs.sourcesJar = env.SOURCES_JAR
+                        fileParts.add('sources')
+                    }
+
+                    publishArgs.fileParts = fileParts
+
+                    withCredentials([
+                        string(credentialsId: 'modrinth-token', variable: 'MODRINTH_TOKEN')
+                    ]) {
+                        modrinthPublish(publishArgs).with { v ->
+                            echo('Published Modrinth version id=' + v.id)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
