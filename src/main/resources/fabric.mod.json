@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "book-writer",
+  "version": "${version}",
+  "name": "InSearchOfName's Book Writer",
+  "description": "A client-side mod that allows you to quickly write text into multiple Minecraft books using the .write command.",
+  "authors": [
+    "Tommy Quatretemps (InSearchOfName)"
+  ],
+  "contact": {
+    "homepage": "https://fabricmc.net/",
+    "sources": "https://github.com/FabricMC/fabric-example-mod"
+  },
+  "license": "Apache-2.0",
+  "icon": "assets/book-writer/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "name.insearchof.BookWriter"
+    ],
+    "client": [
+      "name.insearchof.BookWriterClient"
+    ]
+  },
+  "mixins": [
+    "book-writer.mixins.json",
+    {
+      "config": "book-writer.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.2",
+    "minecraft": "~26.1",
+    "java": ">=25",
+    "fabric-api": "*",
+    "owo": "0.13.0"
+  }
+}
