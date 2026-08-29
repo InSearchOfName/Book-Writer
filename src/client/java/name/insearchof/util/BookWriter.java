@@ -37,7 +37,6 @@ public class BookWriter {
         int booksNeeded = calculateBooksNeeded(pages.length);
         if (bookSlots.size() < booksNeeded) {
             notifyPlayer(
-                player,
                 Component
                     .literal(String.format("Not enough books! Need: %d, Have: %d", booksNeeded, bookSlots.size()))
                     .withStyle(ChatFormatting.RED)
@@ -51,7 +50,7 @@ public class BookWriter {
     private static void writeAsync(String title, String[] pages, List<Integer> bookSlots,
                                    Player player, int booksNeeded) {
         new Thread(() -> {
-            notifyPlayer(player, Component.literal("Stand still while writing books...").withStyle(ChatFormatting.GOLD));
+            notifyPlayer( Component.literal("Stand still while writing books...").withStyle(ChatFormatting.GOLD));
 
             for (int bookIndex = 0; bookIndex < booksNeeded; bookIndex++) {
                 int startPage = bookIndex * MAX_PAGES_PER_BOOK;
@@ -60,10 +59,9 @@ public class BookWriter {
                 String bookTitle = formatBookTitle(title, bookIndex, booksNeeded);
                 List<String> bookPages = extractPages(pages, startPage, endPage);
 
-                sendBookPacket(bookSlots.get(bookIndex), bookPages, bookTitle, player);
+                sendBookPacket(bookSlots.get(bookIndex), bookPages, bookTitle);
 
                 notifyPlayer(
-                    player,
                     Component.literal(String.format("Book %d of %d written", bookIndex + 1, booksNeeded)).withStyle(ChatFormatting.GOLD)
                 );
 
@@ -110,12 +108,10 @@ public class BookWriter {
     }
 
     private static List<String> extractPages(String[] allPages, int startPage, int endPage) {
-        List<String> pages = new ArrayList<>();
-        pages.addAll(Arrays.asList(allPages).subList(startPage, endPage));
-        return pages;
+        return new ArrayList<>(Arrays.asList(allPages).subList(startPage, endPage));
     }
 
-    private static void sendBookPacket(int slot, List<String> pages, String title, Player player) {
+    private static void sendBookPacket(int slot, List<String> pages, String title) {
         var client = Minecraft.getInstance();
         if (client.getConnection() == null) return;
 
@@ -123,8 +119,8 @@ public class BookWriter {
         client.execute(() -> client.getConnection().send(packet));
     }
 
-    private static void notifyPlayer(Player player, Component message) {
-        Minecraft.getInstance().execute(() -> Minecraft.getInstance().gui.setOverlayMessage(message, false));
+    private static void notifyPlayer( Component message) {
+        Minecraft.getInstance().execute(() -> Minecraft.getInstance().gui.hud.setOverlayMessage(message, false));
     }
 
     private static void delayNextWrite() {
@@ -136,7 +132,7 @@ public class BookWriter {
     }
 
     private static void completeWriting(Player player) {
-        notifyPlayer(player, Component.literal("All books written!").withStyle(ChatFormatting.GREEN));
+        notifyPlayer( Component.literal("All books written!").withStyle(ChatFormatting.GREEN));
         Minecraft.getInstance().execute(() -> player.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f));
     }
 }

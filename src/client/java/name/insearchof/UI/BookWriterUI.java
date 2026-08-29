@@ -109,9 +109,9 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
         if (text.isEmpty()) {
             var client = Minecraft.getInstance();
             if (client.player != null) {
-                client.gui.setOverlayMessage(Component.literal("No text to write!").withStyle(ChatFormatting.RED), false);
+                client.gui.hud.setOverlayMessage(Component.literal("No text to write!").withStyle(ChatFormatting.RED), false);
             }
-            Minecraft.getInstance().setScreen(null);
+            Minecraft.getInstance().setScreenAndShow(null);
             return;
         }
 
@@ -127,15 +127,15 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
             Component message = Component
                     .literal(String.format("Not enough books! Need: %d, Have: %d", booksNeeded, booksAvailable))
                     .withStyle(ChatFormatting.RED);
-                client.gui.setOverlayMessage(message, false);
-            Minecraft.getInstance().setScreen(null);
+                client.gui.hud.setOverlayMessage(message, false);
+            Minecraft.getInstance().setScreenAndShow(null);
             return;
         }
 
         BookWriterEvents.WRITE_BOOK.invoker().onWriteBook(client.player, title, text);
         storedText = text;
         storedTitle = title;
-        Minecraft.getInstance().setScreen(null);
+        Minecraft.getInstance().setScreenAndShow(null);
     }
 
     private void onCalculateClick() {
@@ -150,8 +150,8 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
 
         int booksAvailable = InventoryUtils.countWritableBooks(client.player);
         Component message = formatCalculateMessage(booksNeeded, booksAvailable, totalPages);
-        client.gui.setOverlayMessage(message, false);
-        Minecraft.getInstance().setScreen(null);
+        client.gui.hud.setOverlayMessage(message, false);
+        Minecraft.getInstance().setScreenAndShow(null);
     }
 
     private void onClearClick() {

@@ -17,7 +17,7 @@ public class CommandHandler {
         }
 
         Minecraft client = Minecraft.getInstance();
-        client.execute(() -> client.setScreen(new BookWriterUI()));
+        client.execute(() -> client.setScreenAndShow(new BookWriterUI()));
         return false;
     }
 }
