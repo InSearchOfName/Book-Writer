@@ -1,7 +1,7 @@
 {
   "required": false,
   "package": "name.insearchof.mixin.client",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_17",
   "client": [],
   "injectors": {
     "defaultRequire": 1
