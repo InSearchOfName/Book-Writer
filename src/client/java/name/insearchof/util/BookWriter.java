@@ -6,18 +6,22 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundEditBookPacket;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.BooleanSupplier;
 
 public class BookWriter {
-    private static final int CHARS_PER_PAGE = 256;
-    private static final int MAX_PAGES_PER_BOOK = 100;
-    private static final int WRITE_DELAY_MS = 3000;
+    private static final long SIGN_TIMEOUT_MS = 15000;
+    private static final long SIGN_POLL_MS = 50;
+    private static final long SETTLE_MS = 250;
+    private static final int SWAP_ATTEMPTS = 3;
 
     private BookWriter() {
         // Utility class
@@ -31,13 +35,12 @@ public class BookWriter {
      * @param player  The player writing the book
      */
     public static void writeAndSignBook(String title, String content, Player player) {
-        String[] pages = splitIntoPages(content);
+        String[] pages = BookLayout.splitIntoPages(content);
         List<Integer> bookSlots = findAvailableBooks(player);
 
-        int booksNeeded = calculateBooksNeeded(pages.length);
+        int booksNeeded = BookLayout.calculateBooksNeeded(pages.length);
         if (bookSlots.size() < booksNeeded) {
             notifyPlayer(
-                player,
                 Component
                     .literal(String.format("Not enough books! Need: %d, Have: %d", booksNeeded, bookSlots.size()))
                     .withStyle(ChatFormatting.RED)
@@ -45,30 +48,34 @@ public class BookWriter {
             return;
         }
 
-        writeAsync(title, pages, bookSlots, player, booksNeeded);
+        List<BookSlots.Step> steps = BookSlots.plan(bookSlots, findEmptyHotbarSlots(player), player.getInventory().getSelectedSlot());
+        writeAsync(title, pages, steps, player, booksNeeded, BookWriterConfig.getDelayMillis());
     }
 
-    private static void writeAsync(String title, String[] pages, List<Integer> bookSlots,
-                                   Player player, int booksNeeded) {
+    private static void writeAsync(String title, String[] pages, List<BookSlots.Step> steps,
+                                   Player player, int booksNeeded, long delayMs) {
         new Thread(() -> {
-            notifyPlayer(player, Component.literal("Stand still while writing books...").withStyle(ChatFormatting.GOLD));
+            notifyPlayer( Component.literal("Stand still while writing books...").withStyle(ChatFormatting.GOLD));
 
             for (int bookIndex = 0; bookIndex < booksNeeded; bookIndex++) {
-                int startPage = bookIndex * MAX_PAGES_PER_BOOK;
-                int endPage = Math.min(startPage + MAX_PAGES_PER_BOOK, pages.length);
+                int startPage = bookIndex * BookLayout.MAX_PAGES_PER_BOOK;
+                int endPage = Math.min(startPage + BookLayout.MAX_PAGES_PER_BOOK, pages.length);
 
-                String bookTitle = formatBookTitle(title, bookIndex, booksNeeded);
-                List<String> bookPages = extractPages(pages, startPage, endPage);
+                String bookTitle = BookLayout.formatBookTitle(title, bookIndex, booksNeeded);
+                List<String> bookPages = BookLayout.extractPages(pages, startPage, endPage);
 
-                sendBookPacket(bookSlots.get(bookIndex), bookPages, bookTitle, player);
+                BookSlots.Step step = steps.get(bookIndex);
+                if (step.needsSwap()) {
+                    moveIntoHotbar(player, step);
+                }
+                sendBookPacket(step.writeSlot(), bookPages, bookTitle);
 
                 notifyPlayer(
-                    player,
                     Component.literal(String.format("Book %d of %d written", bookIndex + 1, booksNeeded)).withStyle(ChatFormatting.GOLD)
                 );
 
                 if (bookIndex < booksNeeded - 1) {
-                    delayNextWrite();
+                    delayNextWrite(delayMs);
                 }
             }
 
@@ -76,15 +83,14 @@ public class BookWriter {
         }).start();
     }
 
-    private static String[] splitIntoPages(String text) {
-        List<String> pages = new ArrayList<>();
-
-        for (int i = 0; i < text.length(); i += CHARS_PER_PAGE) {
-            int endPos = Math.min(i + CHARS_PER_PAGE, text.length());
-            pages.add(text.substring(i, endPos));
+    private static Set<Integer> findEmptyHotbarSlots(Player player) {
+        Set<Integer> slots = new HashSet<>();
+        for (int i = 0; i < BookSlots.HOTBAR_SIZE; i++) {
+            if (player.getInventory().getItem(i).isEmpty()) {
+                slots.add(i);
+            }
         }
-
-        return pages.isEmpty() ? new String[]{""} : pages.toArray(new String[0]);
+        return slots;
     }
 
     private static List<Integer> findAvailableBooks(Player player) {
@@ -98,24 +104,60 @@ public class BookWriter {
         return slots;
     }
 
-    private static int calculateBooksNeeded(int pageCount) {
-        return (int) Math.ceil((double) pageCount / MAX_PAGES_PER_BOOK);
-    }
+    /**
+     * Swaps a book from the main inventory into the hotbar slot it is written in, and makes sure that worked.
+     * The server can ignore a swap that is sent while it is still syncing the inventory after the previous
+     * book (the packet then carries an outdated state), so the swap is checked and repeated if needed.
+     */
+    private static void moveIntoHotbar(Player player, BookSlots.Step step) {
+        // The previous book in this slot must be signed first, or the swap would move it out unsigned
+        waitUntil(() -> !isWritableBook(player, step.writeSlot()));
 
-    private static String formatBookTitle(String baseTitle, int bookIndex, int totalBooks) {
-        if (totalBooks == 1) {
-            return baseTitle;
+        for (int attempt = 0; attempt < SWAP_ATTEMPTS; attempt++) {
+            sleep(SETTLE_MS);
+            swapIntoHotbar(player, step.bookSlot(), step.writeSlot());
+            sleep(SETTLE_MS);
+
+            if (isWritableBook(player, step.writeSlot())) {
+                return;
+            }
         }
-        return baseTitle + " (Part " + (bookIndex + 1) + ")";
     }
 
-    private static List<String> extractPages(String[] allPages, int startPage, int endPage) {
-        List<String> pages = new ArrayList<>();
-        pages.addAll(Arrays.asList(allPages).subList(startPage, endPage));
-        return pages;
+    private static boolean isWritableBook(Player player, int slot) {
+        return Minecraft.getInstance().submit(() -> player.getInventory().getItem(slot).is(Items.WRITABLE_BOOK)).join();
     }
 
-    private static void sendBookPacket(int slot, List<String> pages, String title, Player player) {
+    private static void waitUntil(BooleanSupplier condition) {
+        long deadline = System.currentTimeMillis() + SIGN_TIMEOUT_MS;
+        while (!condition.getAsBoolean() && System.currentTimeMillis() < deadline) {
+            sleep(SIGN_POLL_MS);
+        }
+    }
+
+    private static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
+     * The server only edits books in the hotbar and offhand, so a book in the main inventory is
+     * swapped with a hotbar slot first. This is queued before the book packet, so the server sees it first.
+     */
+    private static void swapIntoHotbar(Player player, int inventorySlot, int hotbarSlot) {
+        var client = Minecraft.getInstance();
+        if (client.gameMode == null) return;
+
+        // Slots 9 to 35 of the inventory have the same numbers in the inventory menu
+        client.execute(() -> client.gameMode.handleContainerInput(
+            player.inventoryMenu.containerId, inventorySlot, hotbarSlot, ContainerInput.SWAP, player
+        ));
+    }
+
+    private static void sendBookPacket(int slot, List<String> pages, String title) {
         var client = Minecraft.getInstance();
         if (client.getConnection() == null) return;
 
@@ -123,20 +165,20 @@ public class BookWriter {
         client.execute(() -> client.getConnection().send(packet));
     }
 
-    private static void notifyPlayer(Player player, Component message) {
+    private static void notifyPlayer( Component message) {
         Minecraft.getInstance().execute(() -> Minecraft.getInstance().gui.setOverlayMessage(message, false));
     }
 
-    private static void delayNextWrite() {
+    private static void delayNextWrite(long delayMs) {
         try {
-            Thread.sleep(WRITE_DELAY_MS);
+            Thread.sleep(delayMs);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
     }
 
     private static void completeWriting(Player player) {
-        notifyPlayer(player, Component.literal("All books written!").withStyle(ChatFormatting.GREEN));
+        notifyPlayer( Component.literal("All books written!").withStyle(ChatFormatting.GREEN));
         Minecraft.getInstance().execute(() -> player.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f));
     }
 }
