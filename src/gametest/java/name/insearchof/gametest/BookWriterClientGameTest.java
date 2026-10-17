@@ -13,14 +13,17 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.WrittenBookContent;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Runs the real mod in a singleplayer world: the same event the "Write to Book" button invokes
  * is fired, and the signed books that end up in the inventory are checked.
  */
 public class BookWriterClientGameTest implements FabricClientGameTest {
-    private static final int WRITE_TIMEOUT_TICKS = 600;
+    private static final int WRITE_TIMEOUT_TICKS = 1200;
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -31,6 +34,7 @@ public class BookWriterClientGameTest implements FabricClientGameTest {
 
             writesOneBook(context, singleplayer);
             writesALongTextAsSeveralBooks(context, singleplayer);
+            writesMoreBooksThanTheHotbarHolds(context, singleplayer);
         }
     }
 
@@ -66,6 +70,27 @@ public class BookWriterClientGameTest implements FabricClientGameTest {
         assertEquals(BookLayout.MAX_PAGES_PER_BOOK, books.get(0).pages().size(), "pages in the first book");
         assertEquals("Long Book (Part 2)", books.get(1).title().raw(), "second book title");
         assertEquals(1, books.get(1).pages().size(), "pages in the second book");
+    }
+
+    private void writesMoreBooksThanTheHotbarHolds(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        // the server only edits books in the hotbar and offhand, so 3 of these 12 start in the main inventory
+        int bookCount = 12;
+        singleplayer.getServer().runCommand("clear Player0");
+        singleplayer.getServer().runCommand("give Player0 writable_book " + bookCount);
+        context.waitFor(client -> countItems(client.player, Items.WRITABLE_BOOK) == bookCount);
+
+        String text = "y".repeat(BookLayout.CHARS_PER_PAGE * BookLayout.MAX_PAGES_PER_BOOK * bookCount);
+        write(context, "Huge Book", text);
+
+        waitForWrittenBooks(context, bookCount);
+        List<WrittenBookContent> books = writtenBooks(context);
+
+        assertEquals(bookCount, books.size(), "number of written books");
+        Set<String> expectedTitles = new HashSet<>();
+        for (int part = 1; part <= bookCount; part++) {
+            expectedTitles.add("Huge Book (Part " + part + ")");
+        }
+        assertEquals(expectedTitles, books.stream().map(book -> book.title().raw()).collect(Collectors.toSet()), "book titles");
     }
 
     private void write(ClientGameTestContext context, String title, String text) {
