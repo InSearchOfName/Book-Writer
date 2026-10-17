@@ -31,9 +31,3 @@ jobs:
       - name: Build
         run: ./gradlew build
 
-      - name: Upload jars
-        uses: actions/upload-artifact@v7
-        with:
-          name: book-writer-jars
-          path: build/libs/*.jar
-          if-no-files-found: error
