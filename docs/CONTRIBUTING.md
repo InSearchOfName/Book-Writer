@@ -35,4 +35,4 @@ Unit tests live in `src/test/java` and use JUnit. Run them with:
 ./gradlew runClientGameTest
 ```
 
-It opens a game window and takes about 30 seconds. CI runs it in its own job (`client-game-test`) under a virtual display, and uploads the game logs if it fails.
+It opens a game window and takes about 30 seconds. CI does not run it, because client game tests are unstable on GitHub Actions (Fabric's docs warn about this too), so run it yourself after updating to a new Minecraft version.
