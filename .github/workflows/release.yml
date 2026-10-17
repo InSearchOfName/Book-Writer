@@ -1,0 +1,157 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Which part of mod_version to bump
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+      environment:
+        description: test only publishes to the Modrinth test project, prod also bumps the version and creates the GitHub release
+        type: choice
+        options:
+          - test
+          - prod
+        default: test
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BUMP: ${{ inputs.bump }}
+      TARGET: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Work out the new version
+        id: version
+        run: |
+          MC=$(grep '^minecraft_version=' gradle.properties | cut -d= -f2 | tr -d ' \r')
+          CURRENT=$(grep '^mod_version=' gradle.properties | cut -d= -f2 | tr -d ' \r')
+          IFS=. read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          case "$BUMP" in
+            major) NEW="$((MAJOR + 1)).0.0" ;;
+            minor) NEW="${MAJOR}.$((MINOR + 1)).0" ;;
+            patch) NEW="${MAJOR}.${MINOR}.$((PATCH + 1))" ;;
+          esac
+          TAG="${MC}-v${NEW}"
+          if [ "$TARGET" = prod ] && git ls-remote --exit-code --tags origin "refs/tags/${TAG}" > /dev/null; then
+            echo "Tag ${TAG} already exists"
+            exit 1
+          fi
+          echo "Releasing ${TAG} (${CURRENT} -> ${NEW})"
+          {
+            echo "minecraft=${MC}"
+            echo "mod=${NEW}"
+            echo "tag=${TAG}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Commit the version bump
+        if: inputs.environment == 'prod'
+        env:
+          NEW: ${{ steps.version.outputs.mod }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          sed -i -E "s/^mod_version=[0-9.]+/mod_version=${NEW}/" gradle.properties
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "release ${TAG}"
+
+      - name: Build
+        env:
+          NEW: ${{ steps.version.outputs.mod }}
+        run: ./gradlew build -Pmod_version="${NEW}"
+
+      - name: Generate release notes
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+            -f tag_name="${TAG}" \
+            -f target_commitish="${GITHUB_SHA}" \
+            --jq .body > notes.md
+          cat notes.md
+
+      - name: Push the version bump and create the GitHub release
+        if: inputs.environment == 'prod'
+        env:
+          NEW: ${{ steps.version.outputs.mod }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          gh release create "${TAG}" \
+            --target "$(git rev-parse HEAD)" \
+            --title "Release ${TAG}" \
+            --notes-file notes.md \
+            "build/libs/"*"-${NEW}.jar" \
+            "build/libs/"*"-${NEW}-sources.jar"
+
+      - name: Publish to Modrinth
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_API_URL: ${{ vars.MODRINTH_API_URL }}
+          MODRINTH_PROJECT_ID: ${{ vars.MODRINTH_PROJECT_ID }}
+          MODRINTH_DEP_FABRIC_API: ${{ vars.MODRINTH_DEP_FABRIC_API }}
+          MODRINTH_DEP_OWO: ${{ vars.MODRINTH_DEP_OWO }}
+          MC: ${{ steps.version.outputs.minecraft }}
+          NEW: ${{ steps.version.outputs.mod }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          MAIN_JAR=$(ls build/libs/*-"${NEW}".jar)
+          SOURCES_JAR=$(ls build/libs/*-"${NEW}"-sources.jar)
+
+          DATA=$(jq -n \
+            --arg name "Release ${TAG}" \
+            --arg version_number "${TAG}" \
+            --rawfile changelog notes.md \
+            --arg game_version "${MC}" \
+            --arg project_id "${MODRINTH_PROJECT_ID}" \
+            --arg fabric_api "${MODRINTH_DEP_FABRIC_API}" \
+            --arg owo "${MODRINTH_DEP_OWO}" \
+            '{
+              name: $name,
+              version_number: $version_number,
+              changelog: $changelog,
+              dependencies: [
+                {project_id: $fabric_api, dependency_type: "required"},
+                {project_id: $owo, dependency_type: "required"}
+              ],
+              game_versions: [$game_version],
+              version_type: "release",
+              loaders: ["fabric"],
+              featured: true,
+              status: "listed",
+              project_id: $project_id,
+              file_parts: ["main", "sources"],
+              primary_file: "main"
+            }')
+
+          curl --fail-with-body --location "${MODRINTH_API_URL}/version" \
+            --header "Authorization: ${MODRINTH_TOKEN}" \
+            --header "User-Agent: InSearchOfName/Book-Writer (GitHub Actions)" \
+            --form-string "data=${DATA}" \
+            --form "main=@${MAIN_JAR}" \
+            --form "sources=@${SOURCES_JAR}"
