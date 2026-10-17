@@ -6,6 +6,7 @@ A clean, client-side Minecraft Fabric mod that allows you to quickly write text 
 
 - [Using the mod](docs/USAGE.md): features, how to use `.write`, and technical details
 - [Releasing](docs/RELEASING.md): version and branch naming, and how releases work
+- [Contributing](docs/CONTRIBUTING.md): how to report bugs and contribute
 
 ## Links
 
