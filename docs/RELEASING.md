@@ -31,25 +31,52 @@ The same release exists in two places:
 Each Minecraft version gets its own branch, named:
 
 ```
-{minecraft_version without patch}-v{major version of the mod}
+{minecraft_version without patch}
 ```
 
-Examples:
+Examples: `26.1`, `1.21`.
 
-| Branch | Minecraft | Mod |
-|---|---|---|
-| `26.1-v1` | 26.1.x | 1.x.x |
-
-The patch number of the Minecraft version is dropped, so patch updates of the same Minecraft version (for example 26.1 to 26.1.1) stay on the same branch. A new mod major version for the same Minecraft version gets a new branch (`26.1-v2`).
+The patch number of the Minecraft version is dropped, so patch updates of the same Minecraft version (for example 26.1 to 26.1.1) stay on the same branch. The mod version is not part of the branch name, because the release tag already identifies a point in time.
 
 `main` is the branch for the latest Minecraft version. Older Minecraft versions live on their own branches and only receive fixes.
 
 ## Making a release
 
-1. Make sure the change is merged into the right branch (`main` for the latest Minecraft version, otherwise that version's branch).
-2. Set `minecraft_version` and `mod_version` in `gradle.properties` and bump the matching constraints in `src/main/resources/fabric.mod.json`.
-3. Check the build passes locally with `./gradlew build`.
-4. The Jenkins pipeline (see `Jenkinsfile`) builds the project and publishes the release: it creates the `{minecraft_version}-v{mod_version}` tag and GitHub release with generated release notes, attaches the jars, and uploads the same files to Modrinth using the release notes as the changelog.
+Releases are made by the **Release** GitHub Actions workflow (`.github/workflows/release.yml`).
+
+1. Make sure the change is merged into the right branch (`main` for the latest Minecraft version, otherwise that version's branch) and that CI passes.
+2. Open **Actions > Release > Run workflow**, pick the branch, and choose:
+   - **bump**: `patch`, `minor` or `major`, which decides how `mod_version` goes up (for example `1.1.1` becomes `1.1.2`, `1.2.0` or `2.0.0`)
+   - **environment**: `test` or `prod`
+
+Or from the terminal: `gh workflow run release.yml --ref main -f bump=patch -f environment=test`.
+
+### What each environment does
+
+| Step | `test` | `prod` |
+|---|---|---|
+| Work out the new version and tag `{minecraft_version}-v{mod_version}` | yes | yes |
+| Commit the new `mod_version` to the branch | no | yes |
+| Build with `./gradlew build` | yes | yes |
+| Generate release notes with GitHub | yes | yes |
+| Create the tag and GitHub release with the jars | no | yes |
+| Publish to Modrinth (same name, notes and jars) | test project | real project |
+
+Use `test` to try the workflow: it publishes only to the Modrinth test project and does not create a tag, a GitHub release or a commit.
+
+### Environment setup
+
+Both environments (`test` and `prod`, under **Settings > Environments**) need:
+
+| Name | Kind | Value |
+|---|---|---|
+| `MODRINTH_TOKEN` | secret | Modrinth personal access token |
+| `MODRINTH_PROJECT_ID` | variable | the Modrinth project to publish to (the test project for `test`) |
+| `MODRINTH_API_URL` | variable | `https://api.modrinth.com/v2` |
+| `MODRINTH_DEP_FABRIC_API` | variable | Modrinth project ID of Fabric API |
+| `MODRINTH_DEP_OWO` | variable | Modrinth project ID of owo-lib |
+
+`prod` only allows deployments from `main` and the Minecraft version branches. The prod run pushes the version commit with the built-in `GITHUB_TOKEN`, so if branch protection that blocks direct pushes is ever turned on, the workflow needs a bypass or a personal access token.
 
 ## Starting a new Minecraft version
 
