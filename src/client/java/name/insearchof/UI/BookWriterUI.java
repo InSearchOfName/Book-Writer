@@ -62,30 +62,30 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
                 .margins(Insets.bottom(3))
         );
 
-        textField = UIComponents.textArea(Sizing.fill(100), Sizing.fill(55));
+        textField = UIComponents.textArea(Sizing.fill(100), Sizing.fill(35));
         textField.setCharacterLimit(TEXT_MAX_LENGTH);
         textField.setValue(storedText);
-        rootComponent.child(textField.margins(Insets.bottom(8)));
+        rootComponent.child(textField.margins(Insets.bottom(6)));
 
         // Character count
         charCountLabel = UIComponents.label(Component.literal("Characters: 0"));
-        charCountLabel.margins(Insets.bottom(6));
+        charCountLabel.margins(Insets.bottom(4));
         rootComponent.child(charCountLabel);
 
         // Delay between books
-        rootComponent.child(
-            UIComponents.label(Component.literal("Delay between books:"))
-                .margins(Insets.bottom(3))
-        );
-
         DiscreteSliderComponent delaySlider = UIComponents.discreteSlider(
-            Sizing.fixed(200), BookWriterConfig.MIN_DELAY_SECONDS, BookWriterConfig.MAX_DELAY_SECONDS
+            Sizing.fixed(220), BookWriterConfig.MIN_DELAY_SECONDS, BookWriterConfig.MAX_DELAY_SECONDS
         );
         delaySlider.snap(true).decimalPlaces(1);
         delaySlider.setFromDiscreteValue(BookWriterConfig.getDelaySeconds());
-        delaySlider.message(value -> Component.literal(value + " seconds"));
+        delaySlider.message(value -> Component.literal("Delay between books: " + value + " seconds"));
         delaySlider.onChanged().subscribe(BookWriterConfig::setDelaySeconds);
-        rootComponent.child(delaySlider.margins(Insets.bottom(8)));
+
+        FlowLayout delayContainer = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content());
+        delayContainer.horizontalAlignment(HorizontalAlignment.CENTER);
+        delayContainer.margins(Insets.bottom(6));
+        delayContainer.child(delaySlider.sizing(Sizing.fixed(220), Sizing.fixed(20)));
+        rootComponent.child(delayContainer);
 
         // Button container
         FlowLayout buttonContainer = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content());
