@@ -145,8 +145,10 @@ jobs:
               featured: true,
               status: "listed",
               project_id: $project_id,
+              environment: "client_only",
               file_parts: ["main", "sources"],
-              primary_file: "main"
+              primary_file: "main",
+              file_types: {sources: "sources-jar"}
             }')
 
           curl --fail-with-body --location "${MODRINTH_API_URL}/version" \
