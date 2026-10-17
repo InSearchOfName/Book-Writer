@@ -11,7 +11,7 @@ Pull requests can only be opened by collaborators. To contribute, start with an 
 2. Describe what you'd like to change. If you want to work on it yourself, say so in the issue.
 3. The maintainer will pick it up, or add you as a collaborator so you can open a pull request for it.
 
-Anything that doesn't fit a template can be opened as a blank issue.
+Blank issues are disabled, so pick the template that fits best.
 
 ## Pull requests
 
