@@ -28,15 +28,16 @@ The same release exists in two places:
 
 ## Branches
 
-Each Minecraft version gets its own branch, named:
+Each Minecraft version gets its own branch. Minecraft changed how it numbers versions, so there are two styles:
 
-```
-{minecraft_version without patch}
-```
+| Minecraft versioning | Branch is named | Examples |
+|---|---|---|
+| Old, `major.minor.patch` (1.x) | the full version | `1.20.4`, `1.21.1`, `1.21.4` |
+| New, `year.release` (26.1 and later) | `{year}.{release}` | `26.1`, `26.2` |
 
-Examples: `26.1`, `1.21`.
+With the old style every version, including patch versions, has its own branch, because they can differ. With the new style a hotfix of the same release (for example 26.1.1) stays on the `26.1` branch.
 
-The patch number of the Minecraft version is dropped, so patch updates of the same Minecraft version (for example 26.1 to 26.1.1) stay on the same branch. The mod version is not part of the branch name, because the release tag already identifies a point in time.
+The mod version is not part of the branch name, because the release tag already identifies a point in time.
 
 `main` is the branch for the latest Minecraft version. Older Minecraft versions live on their own branches and only receive fixes.
 
