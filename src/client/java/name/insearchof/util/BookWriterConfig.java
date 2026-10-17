@@ -47,7 +47,7 @@ public class BookWriterConfig {
         if (Double.isNaN(seconds)) {
             return DEFAULT_DELAY_SECONDS;
         }
-        return Math.max(MIN_DELAY_SECONDS, Math.min(MAX_DELAY_SECONDS, seconds));
+        return Math.clamp(seconds, MIN_DELAY_SECONDS, MAX_DELAY_SECONDS);
     }
 
     private static double load() {
