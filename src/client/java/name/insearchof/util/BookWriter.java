@@ -17,7 +17,6 @@ import java.util.Optional;
 public class BookWriter {
     private static final int CHARS_PER_PAGE = 256;
     private static final int MAX_PAGES_PER_BOOK = 100;
-    private static final int WRITE_DELAY_MS = 3000;
 
     private BookWriter() {
         // Utility class
@@ -44,11 +43,11 @@ public class BookWriter {
             return;
         }
 
-        writeAsync(title, pages, bookSlots, player, booksNeeded);
+        writeAsync(title, pages, bookSlots, player, booksNeeded, BookWriterConfig.getDelayMillis());
     }
 
     private static void writeAsync(String title, String[] pages, List<Integer> bookSlots,
-                                   Player player, int booksNeeded) {
+                                   Player player, int booksNeeded, long delayMs) {
         new Thread(() -> {
             notifyPlayer( Component.literal("Stand still while writing books...").withStyle(ChatFormatting.GOLD));
 
@@ -66,7 +65,7 @@ public class BookWriter {
                 );
 
                 if (bookIndex < booksNeeded - 1) {
-                    delayNextWrite();
+                    delayNextWrite(delayMs);
                 }
             }
 
@@ -123,9 +122,9 @@ public class BookWriter {
         Minecraft.getInstance().execute(() -> Minecraft.getInstance().gui.hud.setOverlayMessage(message, false));
     }
 
-    private static void delayNextWrite() {
+    private static void delayNextWrite(long delayMs) {
         try {
-            Thread.sleep(WRITE_DELAY_MS);
+            Thread.sleep(delayMs);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }

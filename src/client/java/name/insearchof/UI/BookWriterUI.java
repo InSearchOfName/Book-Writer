@@ -1,6 +1,7 @@
 package name.insearchof.UI;
 
 import io.wispforest.owo.ui.base.BaseOwoScreen;
+import io.wispforest.owo.ui.component.DiscreteSliderComponent;
 import io.wispforest.owo.ui.component.TextAreaComponent;
 import io.wispforest.owo.ui.component.LabelComponent;
 import io.wispforest.owo.ui.component.UIComponents;
@@ -8,6 +9,7 @@ import io.wispforest.owo.ui.container.FlowLayout;
 import io.wispforest.owo.ui.container.UIContainers;
 import io.wispforest.owo.ui.core.*;
 import name.insearchof.event.BookWriterEvents;
+import name.insearchof.util.BookWriterConfig;
 import name.insearchof.util.InventoryUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -60,15 +62,30 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
                 .margins(Insets.bottom(3))
         );
 
-        textField = UIComponents.textArea(Sizing.fill(100), Sizing.fill(55));
+        textField = UIComponents.textArea(Sizing.fill(100), Sizing.fill(35));
         textField.setCharacterLimit(TEXT_MAX_LENGTH);
         textField.setValue(storedText);
-        rootComponent.child(textField.margins(Insets.bottom(8)));
+        rootComponent.child(textField.margins(Insets.bottom(6)));
 
         // Character count
         charCountLabel = UIComponents.label(Component.literal("Characters: 0"));
-        charCountLabel.margins(Insets.bottom(6));
+        charCountLabel.margins(Insets.bottom(4));
         rootComponent.child(charCountLabel);
+
+        // Delay between books
+        DiscreteSliderComponent delaySlider = UIComponents.discreteSlider(
+            Sizing.fixed(220), BookWriterConfig.MIN_DELAY_SECONDS, BookWriterConfig.MAX_DELAY_SECONDS
+        );
+        delaySlider.snap(true).decimalPlaces(1);
+        delaySlider.setFromDiscreteValue(BookWriterConfig.getDelaySeconds());
+        delaySlider.message(value -> Component.literal("Delay between books: " + value + " seconds"));
+        delaySlider.onChanged().subscribe(BookWriterConfig::setDelaySeconds);
+
+        FlowLayout delayContainer = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content());
+        delayContainer.horizontalAlignment(HorizontalAlignment.CENTER);
+        delayContainer.margins(Insets.bottom(6));
+        delayContainer.child(delaySlider.sizing(Sizing.fixed(220), Sizing.fixed(20)));
+        rootComponent.child(delayContainer);
 
         // Button container
         FlowLayout buttonContainer = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content());
@@ -175,8 +192,9 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
                     .literal(String.format("Not enough books! Need: %d, Have: %d", booksNeeded, booksAvailable))
                     .withStyle(ChatFormatting.RED);
         }
+        double seconds = (booksNeeded - 1) * BookWriterConfig.getDelaySeconds();
         return Component
-                .literal(String.format("Books Needed: %d (%d pages)", booksNeeded, totalPages))
+                .literal(String.format("Books Needed: %d (%d pages), about %.0f seconds", booksNeeded, totalPages, seconds))
                 .withStyle(ChatFormatting.GREEN);
     }
 
