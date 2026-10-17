@@ -9,7 +9,7 @@
 - **Adjustable Speed**: Choose the delay between books with a slider (1 to 10 seconds, 3 by default)
 - **Action Bar Feedback**: Real-time progress updates via action bar messages
 - **Async Writing**: Non-blocking background writing to prevent game freezes
-- **Inventory Management**: Automatic detection of available books
+- **Inventory Management**: Automatic detection of available books anywhere in your inventory. The server only edits books in the hotbar and offhand, so books from the main inventory are swapped into a hotbar slot while writing (the written books can end up in other slots afterwards)
 
 ## Usage
 
