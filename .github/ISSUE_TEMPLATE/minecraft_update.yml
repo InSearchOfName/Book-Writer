@@ -1,0 +1,37 @@
+name: Minecraft version update
+description: Track an update to a new Minecraft version
+title: "Update to Minecraft "
+labels: ["minecraft-update"]
+body:
+  - type: input
+    id: minecraft-version
+    attributes:
+      label: Target Minecraft version
+      placeholder: "26.3"
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependency check
+      description: Current and available versions for the target Minecraft version.
+      value: |
+        | Dependency | Current | Available |
+        |---|---|---|
+        | minecraft | | |
+        | fabric-api | | |
+        | fabric-loader | | |
+        | fabric-loom | | |
+        | owo-lib | | |
+        | gradle wrapper | | |
+    validations:
+      required: true
+  - type: textarea
+    id: todo
+    attributes:
+      label: TODO
+      value: |
+        - [ ] Bump `minecraft_version`, `loader_version`, `fabric_api_version`, `loom_version` and `owo_version` in `gradle.properties`
+        - [ ] Update `fabric.mod.json` (`minecraft`, `fabricloader`, `owo` constraints)
+        - [ ] `./gradlew build` and fix any compile errors
+        - [ ] Test in-game with `runClient`
