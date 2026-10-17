@@ -17,7 +17,8 @@ public class CommandHandler {
         }
 
         Minecraft client = Minecraft.getInstance();
-        client.execute(() -> client.setScreen(new BookWriterUI()));
+        // tell() queues the task; execute() would run it right away, and the chat screen would then close ours
+        client.tell(() -> client.setScreen(new BookWriterUI()));
         return false;
     }
 }
