@@ -1,6 +1,7 @@
 package name.insearchof.UI;
 
 import io.wispforest.owo.ui.base.BaseOwoScreen;
+import io.wispforest.owo.ui.component.DiscreteSliderComponent;
 import io.wispforest.owo.ui.component.TextAreaComponent;
 import io.wispforest.owo.ui.component.LabelComponent;
 import io.wispforest.owo.ui.component.UIComponents;
@@ -8,6 +9,7 @@ import io.wispforest.owo.ui.container.FlowLayout;
 import io.wispforest.owo.ui.container.UIContainers;
 import io.wispforest.owo.ui.core.*;
 import name.insearchof.event.BookWriterEvents;
+import name.insearchof.util.BookWriterConfig;
 import name.insearchof.util.InventoryUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -69,6 +71,21 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
         charCountLabel = UIComponents.label(Component.literal("Characters: 0"));
         charCountLabel.margins(Insets.bottom(6));
         rootComponent.child(charCountLabel);
+
+        // Delay between books
+        rootComponent.child(
+            UIComponents.label(Component.literal("Delay between books:"))
+                .margins(Insets.bottom(3))
+        );
+
+        DiscreteSliderComponent delaySlider = UIComponents.discreteSlider(
+            Sizing.fixed(200), BookWriterConfig.MIN_DELAY_SECONDS, BookWriterConfig.MAX_DELAY_SECONDS
+        );
+        delaySlider.snap(true).decimalPlaces(1);
+        delaySlider.setFromDiscreteValue(BookWriterConfig.getDelaySeconds());
+        delaySlider.message(value -> Component.literal(value + " seconds"));
+        delaySlider.onChanged().subscribe(BookWriterConfig::setDelaySeconds);
+        rootComponent.child(delaySlider.margins(Insets.bottom(8)));
 
         // Button container
         FlowLayout buttonContainer = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content());
@@ -175,8 +192,9 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
                     .literal(String.format("Not enough books! Need: %d, Have: %d", booksNeeded, booksAvailable))
                     .withStyle(ChatFormatting.RED);
         }
+        double seconds = (booksNeeded - 1) * BookWriterConfig.getDelaySeconds();
         return Component
-                .literal(String.format("Books Needed: %d (%d pages)", booksNeeded, totalPages))
+                .literal(String.format("Books Needed: %d (%d pages), about %.0f seconds", booksNeeded, totalPages, seconds))
                 .withStyle(ChatFormatting.GREEN);
     }
 
