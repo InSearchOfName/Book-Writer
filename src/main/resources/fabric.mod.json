@@ -30,10 +30,10 @@
     }
   ],
   "depends": {
-    "fabricloader": ">=0.19.2",
-    "minecraft": "~26.2",
-    "java": ">=25",
+    "fabricloader": ">=0.15.0",
+    "minecraft": "1.20.4",
+    "java": ">=17",
     "fabric-api": "*",
-    "owo": "0.13.1"
+    "owo": ">=0.12.6"
   }
 }

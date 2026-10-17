@@ -89,7 +89,7 @@ public class BookWriter {
     }
 
     private static void notifyPlayer( Component message) {
-        Minecraft.getInstance().execute(() -> Minecraft.getInstance().gui.hud.setOverlayMessage(message, false));
+        Minecraft.getInstance().execute(() -> Minecraft.getInstance().gui.setOverlayMessage(message, false));
     }
 
     private static void delayNextWrite(long delayMs) {
