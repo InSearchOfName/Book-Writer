@@ -103,7 +103,7 @@ public class BookWriterClientGameTest implements FabricClientGameTest {
         singleplayer.getServer().runCommand("item replace entity Player0 hotbar.4 with apple 5");
         singleplayer.getServer().runCommand("give Player0 writable_book " + bookCount);
         context.waitFor(client -> countItems(client.player, Items.WRITABLE_BOOK) == bookCount);
-        context.runOnClient(client -> client.player.getInventory().selected = 8);
+        context.runOnClient(client -> client.player.getInventory().setSelectedSlot(8));
 
         write(context, "Mixed Book", "z".repeat(BookLayout.CHARS_PER_PAGE * BookLayout.MAX_PAGES_PER_BOOK * bookCount));
 

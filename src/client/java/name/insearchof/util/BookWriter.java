@@ -48,7 +48,7 @@ public class BookWriter {
             return;
         }
 
-        List<BookSlots.Step> steps = BookSlots.plan(bookSlots, findEmptyHotbarSlots(player), player.getInventory().selected);
+        List<BookSlots.Step> steps = BookSlots.plan(bookSlots, findEmptyHotbarSlots(player), player.getInventory().getSelectedSlot());
         writeAsync(title, pages, steps, player, booksNeeded, BookWriterConfig.getDelayMillis());
     }
 
