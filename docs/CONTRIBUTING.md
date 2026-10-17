@@ -26,3 +26,13 @@ Unit tests live in `src/test/java` and use JUnit. Run them with:
 ```
 
 `./gradlew build` (and CI) runs them too, so a failing test fails the build. Logic that doesn't need Minecraft, such as splitting text into pages and books (`BookLayout`), lives in plain classes so it can be unit tested. When you change that logic, add or update a test for it.
+
+### Client game test
+
+`src/gametest` has a client game test that starts Minecraft with the mod in a singleplayer world, writes books and checks the result. Run it with:
+
+```
+./gradlew runClientGameTest
+```
+
+It opens a game window and takes about 30 seconds. CI runs it in its own job (`client-game-test`) under a virtual display, and uploads the game logs if it fails.
