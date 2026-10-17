@@ -4,9 +4,9 @@ import io.wispforest.owo.ui.base.BaseOwoScreen;
 import io.wispforest.owo.ui.component.DiscreteSliderComponent;
 import io.wispforest.owo.ui.component.TextAreaComponent;
 import io.wispforest.owo.ui.component.LabelComponent;
-import io.wispforest.owo.ui.component.Components;
+import io.wispforest.owo.ui.component.UIComponents;
 import io.wispforest.owo.ui.container.FlowLayout;
-import io.wispforest.owo.ui.container.Containers;
+import io.wispforest.owo.ui.container.UIContainers;
 import io.wispforest.owo.ui.core.*;
 import name.insearchof.event.BookWriterEvents;
 import name.insearchof.util.BookLayout;
@@ -31,7 +31,7 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
 
     @Override
     protected @NotNull OwoUIAdapter<FlowLayout> createAdapter() {
-        return OwoUIAdapter.create(this, Containers::verticalFlow);
+        return OwoUIAdapter.create(this, UIContainers::verticalFlow);
     }
 
     @Override
@@ -45,11 +45,11 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
 
         // Title section
         rootComponent.child(
-            Components.label(Component.literal("Book Title:"))
+            UIComponents.label(Component.literal("Book Title:"))
                 .margins(Insets.bottom(3))
         );
 
-        titleField = Components.textArea(Sizing.fill(100), Sizing.fixed(20));
+        titleField = UIComponents.textArea(Sizing.fill(100), Sizing.fixed(20));
         titleField.maxLines(1);
         titleField.setCharacterLimit(TITLE_MAX_LENGTH);
         titleField.setValue(storedTitle);
@@ -57,22 +57,22 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
 
         // Content section
         rootComponent.child(
-            Components.label(Component.literal("Content:"))
+            UIComponents.label(Component.literal("Content:"))
                 .margins(Insets.bottom(3))
         );
 
-        textField = Components.textArea(Sizing.fill(100), Sizing.fill(35));
+        textField = UIComponents.textArea(Sizing.fill(100), Sizing.fill(35));
         textField.setCharacterLimit(TEXT_MAX_LENGTH);
         textField.setValue(storedText);
         rootComponent.child(textField.margins(Insets.bottom(6)));
 
         // Character count
-        charCountLabel = Components.label(Component.literal("Characters: 0"));
+        charCountLabel = UIComponents.label(Component.literal("Characters: 0"));
         charCountLabel.margins(Insets.bottom(4));
         rootComponent.child(charCountLabel);
 
         // Delay between books
-        DiscreteSliderComponent delaySlider = Components.discreteSlider(
+        DiscreteSliderComponent delaySlider = UIComponents.discreteSlider(
             Sizing.fixed(220), BookWriterConfig.MIN_DELAY_SECONDS, BookWriterConfig.MAX_DELAY_SECONDS
         );
         delaySlider.snap(true).decimalPlaces(1);
@@ -80,29 +80,29 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
         delaySlider.message(value -> Component.literal("Delay between books: " + value + " seconds"));
         delaySlider.onChanged().subscribe(BookWriterConfig::setDelaySeconds);
 
-        FlowLayout delayContainer = Containers.horizontalFlow(Sizing.fill(100), Sizing.content());
+        FlowLayout delayContainer = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content());
         delayContainer.horizontalAlignment(HorizontalAlignment.CENTER);
         delayContainer.margins(Insets.bottom(6));
         delayContainer.child(delaySlider.sizing(Sizing.fixed(220), Sizing.fixed(20)));
         rootComponent.child(delayContainer);
 
         // Button container
-        FlowLayout buttonContainer = Containers.horizontalFlow(Sizing.fill(100), Sizing.content());
+        FlowLayout buttonContainer = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content());
         buttonContainer.horizontalAlignment(HorizontalAlignment.CENTER);
         buttonContainer.gap(10);
 
         buttonContainer.child(
-            Components.button(Component.literal("Write to Book"), button -> onWriteClick())
+            UIComponents.button(Component.literal("Write to Book"), button -> onWriteClick())
                         .sizing(Sizing.fixed(100), Sizing.fixed(20))
         );
 
         buttonContainer.child(
-            Components.button(Component.literal("Calculate"), button -> onCalculateClick())
+            UIComponents.button(Component.literal("Calculate"), button -> onCalculateClick())
                         .sizing(Sizing.fixed(100), Sizing.fixed(20))
         );
 
         buttonContainer.child(
-            Components.button(Component.literal("Clear"), button -> onClearClick())
+            UIComponents.button(Component.literal("Clear"), button -> onClearClick())
                         .sizing(Sizing.fixed(100), Sizing.fixed(20))
         );
 
