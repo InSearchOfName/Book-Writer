@@ -9,6 +9,7 @@ import io.wispforest.owo.ui.container.FlowLayout;
 import io.wispforest.owo.ui.container.UIContainers;
 import io.wispforest.owo.ui.core.*;
 import name.insearchof.event.BookWriterEvents;
+import name.insearchof.util.BookLayout;
 import name.insearchof.util.BookWriterConfig;
 import name.insearchof.util.InventoryUtils;
 import net.minecraft.ChatFormatting;
@@ -18,8 +19,6 @@ import org.jetbrains.annotations.NotNull;
 
 
 public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
-    private static final int CHARS_PER_PAGE = 256;
-    private static final int MAX_PAGES_PER_BOOK = 100;
     private static final int TITLE_MAX_LENGTH = 128;
     private static final int TEXT_MAX_LENGTH = 1000000;
 
@@ -137,7 +136,7 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
             return;
         }
 
-        int booksNeeded = calculateBooksNeeded(text.length());
+        int booksNeeded = BookLayout.calculateBooksNeededForChars(text.length());
         int booksAvailable = InventoryUtils.countWritableBooks(client.player);
 
         if (booksAvailable < booksNeeded) {
@@ -157,8 +156,8 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
 
     private void onCalculateClick() {
         String text = textField.getValue();
-        int totalPages = calculateTotalPages(text.length());
-        int booksNeeded = calculateBooksNeeded(text.length());
+        int totalPages = BookLayout.calculateTotalPages(text.length());
+        int booksNeeded = BookLayout.calculateBooksNeededForChars(text.length());
 
         var client = Minecraft.getInstance();
         if (client.player == null) {
@@ -176,23 +175,13 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
         titleField.setValue("Book");
     }
 
-    private int calculateTotalPages(int charCount) {
-        int pages = (int) Math.ceil((double) charCount / CHARS_PER_PAGE);
-        return Math.max(pages, 1);
-    }
-
-    private int calculateBooksNeeded(int charCount) {
-        int totalPages = calculateTotalPages(charCount);
-        return (int) Math.ceil((double) totalPages / MAX_PAGES_PER_BOOK);
-    }
-
     private Component formatCalculateMessage(int booksNeeded, int booksAvailable, int totalPages) {
         if (booksAvailable < booksNeeded) {
             return Component
                     .literal(String.format("Not enough books! Need: %d, Have: %d", booksNeeded, booksAvailable))
                     .withStyle(ChatFormatting.RED);
         }
-        double seconds = (booksNeeded - 1) * BookWriterConfig.getDelaySeconds();
+        double seconds = BookLayout.estimateSeconds(booksNeeded, BookWriterConfig.getDelaySeconds());
         return Component
                 .literal(String.format("Books Needed: %d (%d pages), about %.0f seconds", booksNeeded, totalPages, seconds))
                 .withStyle(ChatFormatting.GREEN);

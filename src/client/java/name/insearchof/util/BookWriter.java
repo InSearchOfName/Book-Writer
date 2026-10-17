@@ -10,14 +10,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
 public class BookWriter {
-    private static final int CHARS_PER_PAGE = 256;
-    private static final int MAX_PAGES_PER_BOOK = 100;
-
     private BookWriter() {
         // Utility class
     }
@@ -30,10 +26,10 @@ public class BookWriter {
      * @param player  The player writing the book
      */
     public static void writeAndSignBook(String title, String content, Player player) {
-        String[] pages = splitIntoPages(content);
+        String[] pages = BookLayout.splitIntoPages(content);
         List<Integer> bookSlots = findAvailableBooks(player);
 
-        int booksNeeded = calculateBooksNeeded(pages.length);
+        int booksNeeded = BookLayout.calculateBooksNeeded(pages.length);
         if (bookSlots.size() < booksNeeded) {
             notifyPlayer(
                 Component
@@ -52,11 +48,11 @@ public class BookWriter {
             notifyPlayer( Component.literal("Stand still while writing books...").withStyle(ChatFormatting.GOLD));
 
             for (int bookIndex = 0; bookIndex < booksNeeded; bookIndex++) {
-                int startPage = bookIndex * MAX_PAGES_PER_BOOK;
-                int endPage = Math.min(startPage + MAX_PAGES_PER_BOOK, pages.length);
+                int startPage = bookIndex * BookLayout.MAX_PAGES_PER_BOOK;
+                int endPage = Math.min(startPage + BookLayout.MAX_PAGES_PER_BOOK, pages.length);
 
-                String bookTitle = formatBookTitle(title, bookIndex, booksNeeded);
-                List<String> bookPages = extractPages(pages, startPage, endPage);
+                String bookTitle = BookLayout.formatBookTitle(title, bookIndex, booksNeeded);
+                List<String> bookPages = BookLayout.extractPages(pages, startPage, endPage);
 
                 sendBookPacket(bookSlots.get(bookIndex), bookPages, bookTitle);
 
@@ -73,17 +69,6 @@ public class BookWriter {
         }).start();
     }
 
-    private static String[] splitIntoPages(String text) {
-        List<String> pages = new ArrayList<>();
-
-        for (int i = 0; i < text.length(); i += CHARS_PER_PAGE) {
-            int endPos = Math.min(i + CHARS_PER_PAGE, text.length());
-            pages.add(text.substring(i, endPos));
-        }
-
-        return pages.isEmpty() ? new String[]{""} : pages.toArray(new String[0]);
-    }
-
     private static List<Integer> findAvailableBooks(Player player) {
         List<Integer> slots = new ArrayList<>();
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
@@ -93,21 +78,6 @@ public class BookWriter {
             }
         }
         return slots;
-    }
-
-    private static int calculateBooksNeeded(int pageCount) {
-        return (int) Math.ceil((double) pageCount / MAX_PAGES_PER_BOOK);
-    }
-
-    private static String formatBookTitle(String baseTitle, int bookIndex, int totalBooks) {
-        if (totalBooks == 1) {
-            return baseTitle;
-        }
-        return baseTitle + " (Part " + (bookIndex + 1) + ")";
-    }
-
-    private static List<String> extractPages(String[] allPages, int startPage, int endPage) {
-        return new ArrayList<>(Arrays.asList(allPages).subList(startPage, endPage));
     }
 
     private static void sendBookPacket(int slot, List<String> pages, String title) {
