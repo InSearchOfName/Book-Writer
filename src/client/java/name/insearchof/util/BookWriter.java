@@ -15,8 +15,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 
 public class BookWriter {
+    private static final long SIGN_TIMEOUT_MS = 15000;
+    private static final long SIGN_POLL_MS = 50;
+    private static final long SETTLE_MS = 250;
+    private static final int SWAP_ATTEMPTS = 3;
+
     private BookWriter() {
         // Utility class
     }
@@ -60,7 +66,7 @@ public class BookWriter {
 
                 BookSlots.Step step = steps.get(bookIndex);
                 if (step.needsSwap()) {
-                    swapIntoHotbar(player, step.bookSlot(), step.writeSlot());
+                    moveIntoHotbar(player, step);
                 }
                 sendBookPacket(step.writeSlot(), bookPages, bookTitle);
 
@@ -96,6 +102,45 @@ public class BookWriter {
             }
         }
         return slots;
+    }
+
+    /**
+     * Swaps a book from the main inventory into the hotbar slot it is written in, and makes sure that worked.
+     * The server can ignore a swap that is sent while it is still syncing the inventory after the previous
+     * book (the packet then carries an outdated state), so the swap is checked and repeated if needed.
+     */
+    private static void moveIntoHotbar(Player player, BookSlots.Step step) {
+        // The previous book in this slot must be signed first, or the swap would move it out unsigned
+        waitUntil(() -> !isWritableBook(player, step.writeSlot()));
+
+        for (int attempt = 0; attempt < SWAP_ATTEMPTS; attempt++) {
+            sleep(SETTLE_MS);
+            swapIntoHotbar(player, step.bookSlot(), step.writeSlot());
+            sleep(SETTLE_MS);
+
+            if (isWritableBook(player, step.writeSlot())) {
+                return;
+            }
+        }
+    }
+
+    private static boolean isWritableBook(Player player, int slot) {
+        return Minecraft.getInstance().submit(() -> player.getInventory().getItem(slot).is(Items.WRITABLE_BOOK)).join();
+    }
+
+    private static void waitUntil(BooleanSupplier condition) {
+        long deadline = System.currentTimeMillis() + SIGN_TIMEOUT_MS;
+        while (!condition.getAsBoolean() && System.currentTimeMillis() < deadline) {
+            sleep(SIGN_POLL_MS);
+        }
+    }
+
+    private static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /**

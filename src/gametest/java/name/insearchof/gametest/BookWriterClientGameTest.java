@@ -35,6 +35,7 @@ public class BookWriterClientGameTest implements FabricClientGameTest {
             writesOneBook(context, singleplayer);
             writesALongTextAsSeveralBooks(context, singleplayer);
             writesMoreBooksThanTheHotbarHolds(context, singleplayer);
+            writesBooksBetweenOtherItemsInCreativeMode(context, singleplayer);
         }
     }
 
@@ -91,6 +92,29 @@ public class BookWriterClientGameTest implements FabricClientGameTest {
             expectedTitles.add("Huge Book (Part " + part + ")");
         }
         assertEquals(expectedTitles, books.stream().map(book -> book.title().raw()).collect(Collectors.toSet()), "book titles");
+    }
+
+    private void writesBooksBetweenOtherItemsInCreativeMode(ClientGameTestContext context, TestSingleplayerContext singleplayer) {
+        // regression: the swap used to be sent while the server was still syncing the previous book, and was lost
+        int bookCount = 11;
+        singleplayer.getServer().runCommand("gamemode creative Player0");
+        singleplayer.getServer().runCommand("clear Player0");
+        singleplayer.getServer().runCommand("item replace entity Player0 hotbar.1 with diamond_sword");
+        singleplayer.getServer().runCommand("item replace entity Player0 hotbar.4 with apple 5");
+        singleplayer.getServer().runCommand("give Player0 writable_book " + bookCount);
+        context.waitFor(client -> countItems(client.player, Items.WRITABLE_BOOK) == bookCount);
+        context.runOnClient(client -> client.player.getInventory().setSelectedSlot(8));
+
+        write(context, "Mixed Book", "z".repeat(BookLayout.CHARS_PER_PAGE * BookLayout.MAX_PAGES_PER_BOOK * bookCount));
+
+        waitForWrittenBooks(context, bookCount);
+        assertEquals(bookCount, writtenBooks(context).size(), "number of written books");
+        assertEquals(1, countItems(context, Items.DIAMOND_SWORD), "swords kept");
+        assertEquals(5, countItems(context, Items.APPLE), "apples kept");
+    }
+
+    private int countItems(ClientGameTestContext context, net.minecraft.world.item.Item item) {
+        return context.computeOnClient(client -> countItems(client.player, item));
     }
 
     private void write(ClientGameTestContext context, String title, String text) {
