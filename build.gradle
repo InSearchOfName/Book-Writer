@@ -1,6 +1,8 @@
 plugins {
 	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 	id 'maven-publish'
+	id 'jacoco'
+	id 'org.sonarqube' version '7.5.0.8588'
 }
 
 version = project.mod_version
@@ -55,6 +57,26 @@ dependencies {
 
 test {
 	useJUnitPlatform()
+	finalizedBy jacocoTestReport
+}
+
+// the code lives in two source sets (split environment), so the report has to look at both
+jacocoTestReport {
+	dependsOn test
+	classDirectories.setFrom(sourceSets.main.output, sourceSets.client.output)
+	sourceDirectories.setFrom(sourceSets.main.allSource.srcDirs, sourceSets.client.allSource.srcDirs)
+	reports {
+		xml.required = true
+	}
+}
+
+sonar {
+	properties {
+		property "sonar.organization", "insearchofname"
+		property "sonar.projectKey", "InSearchOfName_Book-Writer"
+		property "sonar.host.url", "https://sonarcloud.io"
+		property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
+	}
 }
 
 processResources {
