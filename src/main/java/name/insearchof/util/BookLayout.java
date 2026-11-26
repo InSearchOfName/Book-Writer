@@ -18,15 +18,21 @@ public class BookLayout {
     }
 
     /**
-     * Splits text into pages of at most {@link #CHARS_PER_PAGE} characters.
+     * Splits text into pages of at most {@link #CHARS_PER_PAGE} characters, never inside a surrogate pair.
      * Empty text gives one empty page.
      */
     public static String[] splitIntoPages(String text) {
         List<String> pages = new ArrayList<>();
 
-        for (int i = 0; i < text.length(); i += CHARS_PER_PAGE) {
+        int i = 0;
+        while (i < text.length()) {
             int endPos = Math.min(i + CHARS_PER_PAGE, text.length());
+            // Do not cut an emoji (two chars) in half
+            if (endPos < text.length() && Character.isHighSurrogate(text.charAt(endPos - 1))) {
+                endPos--;
+            }
             pages.add(text.substring(i, endPos));
+            i = endPos;
         }
 
         return pages.isEmpty() ? new String[]{""} : pages.toArray(new String[0]);
