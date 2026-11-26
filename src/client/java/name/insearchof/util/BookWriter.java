@@ -75,6 +75,9 @@ public class BookWriter {
         notifyPlayer( Component.literal("Stand still while writing books...").withStyle(ChatFormatting.GOLD));
 
         for (int bookIndex = 0; bookIndex < booksNeeded; bookIndex++) {
+            if (!isInWorld(player)) {
+                return;
+            }
             int startPage = bookIndex * BookLayout.MAX_PAGES_PER_BOOK;
             int endPage = Math.min(startPage + BookLayout.MAX_PAGES_PER_BOOK, pages.length);
 
@@ -132,11 +135,11 @@ public class BookWriter {
      */
     private static boolean moveIntoHotbar(Player player, BookSlots.Step step) {
         // The previous book in this slot must be signed first, or the swap would move it out unsigned
-        if (!waitUntil(() -> !isWritableBook(player, step.writeSlot()))) {
+        if (!waitUntil(() -> !isInWorld(player) || !isWritableBook(player, step.writeSlot()))) {
             return false;
         }
 
-        for (int attempt = 0; attempt < SWAP_ATTEMPTS; attempt++) {
+        for (int attempt = 0; attempt < SWAP_ATTEMPTS && isInWorld(player); attempt++) {
             sleep(SETTLE_MS);
             swapIntoHotbar(player, step.bookSlot(), step.writeSlot());
             sleep(SETTLE_MS);
@@ -146,6 +149,11 @@ public class BookWriter {
             }
         }
         return false;
+    }
+
+    /** False once the player left the world (disconnect or world change), so a running write stops. */
+    private static boolean isInWorld(Player player) {
+        return Minecraft.getInstance().player == player;
     }
 
     private static boolean isWritableBook(Player player, int slot) {
