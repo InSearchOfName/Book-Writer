@@ -1,6 +1,6 @@
 package name.insearchof.gametest;
 
-import name.insearchof.event.BookWriterEvents;
+import name.insearchof.util.BookWriter;
 import name.insearchof.util.BookLayout;
 import name.insearchof.util.BookWriterConfig;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -119,7 +119,7 @@ public class BookWriterClientGameTest implements FabricClientGameTest {
 
     private void write(ClientGameTestContext context, String title, String text) {
         context.runOnClient(client ->
-            BookWriterEvents.WRITE_BOOK.invoker().onWriteBook(client.player, title, text)
+            BookWriter.writeAndSignBook(title, text, client.player)
         );
     }
 
