@@ -16,9 +16,9 @@ public class BookWriterConfig {
     public static final double DEFAULT_DELAY_SECONDS = 3.0;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path CONFIG_FILE = FabricLoader.getInstance().getConfigDir().resolve("book-writer.json");
 
-    private static double delaySeconds = load();
+    // Loaded on first use, so the class can be loaded without Fabric (unit tests)
+    private static Double delaySeconds;
 
     private BookWriterConfig() {
         // Utility class
@@ -28,6 +28,9 @@ public class BookWriterConfig {
      * @return the delay between writing two books, in seconds
      */
     public static double getDelaySeconds() {
+        if (delaySeconds == null) {
+            delaySeconds = load(configFile());
+        }
         return delaySeconds;
     }
 
@@ -36,11 +39,11 @@ public class BookWriterConfig {
      */
     public static void setDelaySeconds(double seconds) {
         delaySeconds = clamp(seconds);
-        save();
+        save(configFile(), delaySeconds);
     }
 
     public static long getDelayMillis() {
-        return Math.round(delaySeconds * 1000);
+        return Math.round(getDelaySeconds() * 1000);
     }
 
     private static double clamp(double seconds) {
@@ -50,12 +53,16 @@ public class BookWriterConfig {
         return Math.clamp(seconds, MIN_DELAY_SECONDS, MAX_DELAY_SECONDS);
     }
 
-    private static double load() {
-        if (!Files.exists(CONFIG_FILE)) {
+    private static Path configFile() {
+        return FabricLoader.getInstance().getConfigDir().resolve("book-writer.json");
+    }
+
+    static double load(Path file) {
+        if (!Files.exists(file)) {
             return DEFAULT_DELAY_SECONDS;
         }
 
-        try (Reader reader = Files.newBufferedReader(CONFIG_FILE)) {
+        try (Reader reader = Files.newBufferedReader(file)) {
             Data data = GSON.fromJson(reader, Data.class);
             return data == null ? DEFAULT_DELAY_SECONDS : clamp(data.delaySeconds);
         } catch (IOException | RuntimeException e) {
@@ -64,11 +71,11 @@ public class BookWriterConfig {
         }
     }
 
-    private static void save() {
+    static void save(Path file, double seconds) {
         Data data = new Data();
-        data.delaySeconds = delaySeconds;
+        data.delaySeconds = seconds;
 
-        try (Writer writer = Files.newBufferedWriter(CONFIG_FILE)) {
+        try (Writer writer = Files.newBufferedWriter(file)) {
             GSON.toJson(data, writer);
         } catch (IOException e) {
             // The setting still applies for this session
