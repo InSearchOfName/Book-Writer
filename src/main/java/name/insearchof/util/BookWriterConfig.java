@@ -39,11 +39,18 @@ public class BookWriterConfig {
     }
 
     /**
-     * Sets the delay between writing two books and saves it. The value is clamped to the allowed range.
+     * Sets the delay between writing two books. The value is clamped to the allowed range.
+     * It is only kept in memory until {@link #save()} is called.
      */
     public static void setDelaySeconds(double seconds) {
         delaySeconds = clamp(seconds);
-        save(configFile.get(), delaySeconds);
+    }
+
+    /**
+     * Saves the current delay to the config file.
+     */
+    public static void save() {
+        save(configFile.get(), getDelaySeconds());
     }
 
     public static long getDelayMillis() {
