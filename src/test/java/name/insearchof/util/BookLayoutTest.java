@@ -102,6 +102,16 @@ class BookLayoutTest {
     }
 
     @Test
+    void emojiAreNotSplitAcrossPages() {
+        // 255 letters, then an emoji (2 chars) that would start on the last char of the page
+        String emoji = "\uD83D\uDE00";
+        String[] pages = BookLayout.splitIntoPages("a".repeat(BookLayout.CHARS_PER_PAGE - 1) + emoji + "b");
+        assertEquals(2, pages.length);
+        assertEquals("a".repeat(BookLayout.CHARS_PER_PAGE - 1), pages[0]);
+        assertEquals(emoji + "b", pages[1]);
+    }
+
+    @Test
     void titlesAreCutToTheBookPacketLimit() {
         String longTitle = "x".repeat(40);
         assertEquals(BookLayout.MAX_TITLE_LENGTH, BookLayout.formatBookTitle(longTitle, 0, 1).length());
