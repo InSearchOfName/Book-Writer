@@ -48,12 +48,14 @@ class BookWriterConfigTest {
     }
 
     @Test
-    void settingTheDelayClampsAndSavesIt() {
+    void settingTheDelayClampsItAndSaveWritesIt() {
         Path file = dir.resolve("book-writer.json");
         BookWriterConfig.configFile = () -> file;
 
         BookWriterConfig.setDelaySeconds(99);
         assertEquals(BookWriterConfig.MAX_DELAY_SECONDS, BookWriterConfig.getDelaySeconds());
+
+        BookWriterConfig.save();
         assertEquals(BookWriterConfig.MAX_DELAY_SECONDS, BookWriterConfig.load(file));
 
         BookWriterConfig.setDelaySeconds(2.5);

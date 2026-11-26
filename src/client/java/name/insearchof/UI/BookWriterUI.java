@@ -182,6 +182,12 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
     }
 
     @Override
+    public void removed() {
+        super.removed();
+        BookWriterConfig.save();
+    }
+
+    @Override
     public boolean isPauseScreen() {
         return false;
     }
