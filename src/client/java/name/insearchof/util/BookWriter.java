@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
 public class BookWriter {
@@ -22,6 +23,7 @@ public class BookWriter {
     private static final long SIGN_POLL_MS = 50;
     private static final long SETTLE_MS = 250;
     private static final int SWAP_ATTEMPTS = 3;
+    private static final AtomicBoolean WRITING = new AtomicBoolean();
 
     private BookWriter() {
         // Utility class
@@ -54,36 +56,50 @@ public class BookWriter {
 
     private static void writeAsync(String title, String[] pages, List<BookSlots.Step> steps,
                                    Player player, int booksNeeded, long delayMs) {
+        if (!WRITING.compareAndSet(false, true)) {
+            notifyPlayer(Component.literal("Already writing books, wait until that is done").withStyle(ChatFormatting.RED));
+            return;
+        }
+
         new Thread(() -> {
-            notifyPlayer( Component.literal("Stand still while writing books...").withStyle(ChatFormatting.GOLD));
-
-            for (int bookIndex = 0; bookIndex < booksNeeded; bookIndex++) {
-                int startPage = bookIndex * BookLayout.MAX_PAGES_PER_BOOK;
-                int endPage = Math.min(startPage + BookLayout.MAX_PAGES_PER_BOOK, pages.length);
-
-                String bookTitle = BookLayout.formatBookTitle(title, bookIndex, booksNeeded);
-                List<String> bookPages = BookLayout.extractPages(pages, startPage, endPage);
-
-                BookSlots.Step step = steps.get(bookIndex);
-                if (step.needsSwap() && !moveIntoHotbar(player, step)) {
-                    notifyPlayer(
-                        Component.literal(String.format("Could not move book %d into the hotbar, stopped", bookIndex + 1)).withStyle(ChatFormatting.RED)
-                    );
-                    return;
-                }
-                sendBookPacket(step.writeSlot(), bookPages, bookTitle);
-
-                notifyPlayer(
-                    Component.literal(String.format("Book %d of %d written", bookIndex + 1, booksNeeded)).withStyle(ChatFormatting.GOLD)
-                );
-
-                if (bookIndex < booksNeeded - 1) {
-                    delayNextWrite(delayMs);
-                }
+            try {
+                writeBooks(title, pages, steps, player, booksNeeded, delayMs);
+            } finally {
+                WRITING.set(false);
             }
-
-            completeWriting(player);
         }).start();
+    }
+
+    private static void writeBooks(String title, String[] pages, List<BookSlots.Step> steps,
+                                   Player player, int booksNeeded, long delayMs) {
+        notifyPlayer( Component.literal("Stand still while writing books...").withStyle(ChatFormatting.GOLD));
+
+        for (int bookIndex = 0; bookIndex < booksNeeded; bookIndex++) {
+            int startPage = bookIndex * BookLayout.MAX_PAGES_PER_BOOK;
+            int endPage = Math.min(startPage + BookLayout.MAX_PAGES_PER_BOOK, pages.length);
+
+            String bookTitle = BookLayout.formatBookTitle(title, bookIndex, booksNeeded);
+            List<String> bookPages = BookLayout.extractPages(pages, startPage, endPage);
+
+            BookSlots.Step step = steps.get(bookIndex);
+            if (step.needsSwap() && !moveIntoHotbar(player, step)) {
+                notifyPlayer(
+                    Component.literal(String.format("Could not move book %d into the hotbar, stopped", bookIndex + 1)).withStyle(ChatFormatting.RED)
+                );
+                return;
+            }
+            sendBookPacket(step.writeSlot(), bookPages, bookTitle);
+
+            notifyPlayer(
+                Component.literal(String.format("Book %d of %d written", bookIndex + 1, booksNeeded)).withStyle(ChatFormatting.GOLD)
+            );
+
+            if (bookIndex < booksNeeded - 1) {
+                delayNextWrite(delayMs);
+            }
+        }
+
+        completeWriting(player);
     }
 
     private static Set<Integer> findEmptyHotbarSlots(Player player) {
