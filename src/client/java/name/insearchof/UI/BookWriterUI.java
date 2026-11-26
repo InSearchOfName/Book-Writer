@@ -8,7 +8,7 @@ import io.wispforest.owo.ui.component.UIComponents;
 import io.wispforest.owo.ui.container.FlowLayout;
 import io.wispforest.owo.ui.container.UIContainers;
 import io.wispforest.owo.ui.core.*;
-import name.insearchof.event.BookWriterEvents;
+import name.insearchof.util.BookWriter;
 import name.insearchof.util.BookLayout;
 import name.insearchof.util.BookWriterConfig;
 import name.insearchof.util.InventoryUtils;
@@ -148,7 +148,7 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
             return;
         }
 
-        BookWriterEvents.WRITE_BOOK.invoker().onWriteBook(client.player, title, text);
+        BookWriter.writeAndSignBook(title, text, client.player);
         storedText = text;
         storedTitle = title;
         Minecraft.getInstance().setScreenAndShow(null);
