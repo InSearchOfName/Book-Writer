@@ -8,8 +8,9 @@
     "Tommy (InSearchOfName)"
   ],
   "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
+    "homepage": "https://github.com/InSearchOfName/Book-Writer",
+    "sources": "https://github.com/InSearchOfName/Book-Writer",
+    "issues": "https://github.com/InSearchOfName/Book-Writer/issues"
   },
   "license": "Apache-2.0",
   "icon": "assets/book-writer/icon.png",
