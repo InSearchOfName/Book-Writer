@@ -11,6 +11,7 @@ import java.util.List;
 public class BookLayout {
     public static final int CHARS_PER_PAGE = 256;
     public static final int MAX_PAGES_PER_BOOK = 100;
+    public static final int MAX_TITLE_LENGTH = 32;
 
     private BookLayout() {
         // Utility class
@@ -54,13 +55,13 @@ public class BookLayout {
     }
 
     /**
-     * @return the title of a book; books of a multi-book text get a " (Part N)" suffix
+     * @return the title of a book, at most {@link #MAX_TITLE_LENGTH} characters (the limit of the book packet);
+     * books of a multi-book text get a " (Part N)" suffix, and the base title is shortened to make room for it
      */
     public static String formatBookTitle(String baseTitle, int bookIndex, int totalBooks) {
-        if (totalBooks == 1) {
-            return baseTitle;
-        }
-        return baseTitle + " (Part " + (bookIndex + 1) + ")";
+        String suffix = totalBooks == 1 ? "" : " (Part " + (bookIndex + 1) + ")";
+        int room = MAX_TITLE_LENGTH - suffix.length();
+        return baseTitle.substring(0, Math.min(baseTitle.length(), room)) + suffix;
     }
 
     /**
