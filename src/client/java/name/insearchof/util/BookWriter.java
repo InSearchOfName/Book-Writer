@@ -65,8 +65,11 @@ public class BookWriter {
                 List<String> bookPages = BookLayout.extractPages(pages, startPage, endPage);
 
                 BookSlots.Step step = steps.get(bookIndex);
-                if (step.needsSwap()) {
-                    moveIntoHotbar(player, step);
+                if (step.needsSwap() && !moveIntoHotbar(player, step)) {
+                    notifyPlayer(
+                        Component.literal(String.format("Could not move book %d into the hotbar, stopped", bookIndex + 1)).withStyle(ChatFormatting.RED)
+                    );
+                    return;
                 }
                 sendBookPacket(step.writeSlot(), bookPages, bookTitle);
 
@@ -106,12 +109,16 @@ public class BookWriter {
 
     /**
      * Swaps a book from the main inventory into the hotbar slot it is written in, and makes sure that worked.
+     *
+     * @return whether the book is in the hotbar slot, ready to be written
      * The server can ignore a swap that is sent while it is still syncing the inventory after the previous
      * book (the packet then carries an outdated state), so the swap is checked and repeated if needed.
      */
-    private static void moveIntoHotbar(Player player, BookSlots.Step step) {
+    private static boolean moveIntoHotbar(Player player, BookSlots.Step step) {
         // The previous book in this slot must be signed first, or the swap would move it out unsigned
-        waitUntil(() -> !isWritableBook(player, step.writeSlot()));
+        if (!waitUntil(() -> !isWritableBook(player, step.writeSlot()))) {
+            return false;
+        }
 
         for (int attempt = 0; attempt < SWAP_ATTEMPTS; attempt++) {
             sleep(SETTLE_MS);
@@ -119,20 +126,25 @@ public class BookWriter {
             sleep(SETTLE_MS);
 
             if (isWritableBook(player, step.writeSlot())) {
-                return;
+                return true;
             }
         }
+        return false;
     }
 
     private static boolean isWritableBook(Player player, int slot) {
         return Minecraft.getInstance().submit(() -> player.getInventory().getItem(slot).is(Items.WRITABLE_BOOK)).join();
     }
 
-    private static void waitUntil(BooleanSupplier condition) {
+    private static boolean waitUntil(BooleanSupplier condition) {
         long deadline = System.currentTimeMillis() + SIGN_TIMEOUT_MS;
-        while (!condition.getAsBoolean() && System.currentTimeMillis() < deadline) {
+        while (!condition.getAsBoolean()) {
+            if (System.currentTimeMillis() >= deadline) {
+                return false;
+            }
             sleep(SIGN_POLL_MS);
         }
+        return true;
     }
 
     private static void sleep(long millis) {
