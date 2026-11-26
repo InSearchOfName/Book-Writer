@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class BookWriterConfigTest {
@@ -77,6 +78,6 @@ class BookWriterConfigTest {
     @Test
     void savingToAnUnwritablePathDoesNotThrow() {
         // a directory cannot be opened as a file
-        BookWriterConfig.save(dir, 4.0);
+        assertDoesNotThrow(() -> BookWriterConfig.save(dir, 4.0));
     }
 }
