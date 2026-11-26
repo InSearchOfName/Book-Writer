@@ -42,11 +42,7 @@ public class BookWriter {
 
         int booksNeeded = BookLayout.calculateBooksNeeded(pages.length);
         if (bookSlots.size() < booksNeeded) {
-            notifyPlayer(
-                Component
-                    .literal(String.format("Not enough books! Need: %d, Have: %d", booksNeeded, bookSlots.size()))
-                    .withStyle(ChatFormatting.RED)
-            );
+            notifyPlayer(notEnoughBooks(booksNeeded, bookSlots.size()));
             return;
         }
 
@@ -98,7 +94,7 @@ public class BookWriter {
             );
 
             if (bookIndex < booksNeeded - 1) {
-                delayNextWrite(delayMs);
+                sleep(delayMs);
             }
         }
 
@@ -115,7 +111,16 @@ public class BookWriter {
         return slots;
     }
 
-    private static List<Integer> findAvailableBooks(Player player) {
+    /**
+     * @return the red message that tells the player more books are needed
+     */
+    public static Component notEnoughBooks(int needed, int have) {
+        return Component
+            .literal(String.format("Not enough books! Need: %d, Have: %d", needed, have))
+            .withStyle(ChatFormatting.RED);
+    }
+
+    public static List<Integer> findAvailableBooks(Player player) {
         List<Integer> slots = new ArrayList<>();
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
             ItemStack stack = player.getInventory().getItem(i);
@@ -203,14 +208,6 @@ public class BookWriter {
 
     private static void notifyPlayer( Component message) {
         Minecraft.getInstance().execute(() -> Minecraft.getInstance().gui.hud.setOverlayMessage(message, false));
-    }
-
-    private static void delayNextWrite(long delayMs) {
-        try {
-            Thread.sleep(delayMs);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
     }
 
     private static void completeWriting(Player player) {
