@@ -19,7 +19,7 @@ import org.jetbrains.annotations.NotNull;
 
 
 public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
-    private static final int TITLE_MAX_LENGTH = 128;
+    private static final int TITLE_MAX_LENGTH = BookLayout.MAX_TITLE_LENGTH;
     private static final int TEXT_MAX_LENGTH = 1000000;
 
     private static String storedText = "";

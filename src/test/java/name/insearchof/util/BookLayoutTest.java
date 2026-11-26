@@ -102,6 +102,13 @@ class BookLayoutTest {
     }
 
     @Test
+    void titlesAreCutToTheBookPacketLimit() {
+        String longTitle = "x".repeat(40);
+        assertEquals(BookLayout.MAX_TITLE_LENGTH, BookLayout.formatBookTitle(longTitle, 0, 1).length());
+        assertEquals("x".repeat(22) + " (Part 10)", BookLayout.formatBookTitle(longTitle, 9, 40));
+    }
+
+    @Test
     void extractPagesReturnsTheRequestedRange() {
         String[] pages = {"a", "b", "c", "d"};
 
