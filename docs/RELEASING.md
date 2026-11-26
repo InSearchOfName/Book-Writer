@@ -60,8 +60,8 @@ Or from the terminal: `gh workflow run release.yml --ref main -f bump=patch -f e
 | Commit the new `mod_version` to the branch | no | yes |
 | Build with `./gradlew build` | yes | yes |
 | Generate release notes with GitHub | yes | yes |
-| Create the tag and GitHub release with the jars | no | yes |
 | Publish to Modrinth (same name, notes and jars) | test project | real project |
+| Create the tag and GitHub release with the jars | no | yes |
 
 Use `test` to try the workflow: it publishes only to the Modrinth test project and does not create a tag, a GitHub release or a commit.
 

@@ -95,20 +95,6 @@ jobs:
             --jq .body > notes.md
           cat notes.md
 
-      - name: Push the version bump and create the GitHub release
-        if: inputs.environment == 'prod'
-        env:
-          NEW: ${{ steps.version.outputs.mod }}
-          TAG: ${{ steps.version.outputs.tag }}
-        run: |
-          git push origin "HEAD:${GITHUB_REF_NAME}"
-          gh release create "${TAG}" \
-            --target "$(git rev-parse HEAD)" \
-            --title "Release ${TAG}" \
-            --notes-file notes.md \
-            "build/libs/"*"-${NEW}.jar" \
-            "build/libs/"*"-${NEW}-sources.jar"
-
       - name: Publish to Modrinth
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
@@ -157,3 +143,17 @@ jobs:
             --form-string "data=${DATA}" \
             --form "main=@${MAIN_JAR}" \
             --form "sources=@${SOURCES_JAR}"
+
+      - name: Push the version bump and create the GitHub release
+        if: inputs.environment == 'prod'
+        env:
+          NEW: ${{ steps.version.outputs.mod }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          gh release create "${TAG}" \
+            --target "$(git rev-parse HEAD)" \
+            --title "Release ${TAG}" \
+            --notes-file notes.md \
+            "build/libs/"*"-${NEW}.jar" \
+            "build/libs/"*"-${NEW}-sources.jar"
