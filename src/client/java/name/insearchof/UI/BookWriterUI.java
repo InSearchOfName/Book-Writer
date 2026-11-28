@@ -8,10 +8,9 @@ import io.wispforest.owo.ui.component.UIComponents;
 import io.wispforest.owo.ui.container.FlowLayout;
 import io.wispforest.owo.ui.container.UIContainers;
 import io.wispforest.owo.ui.core.*;
-import name.insearchof.event.BookWriterEvents;
+import name.insearchof.util.BookWriter;
 import name.insearchof.util.BookLayout;
 import name.insearchof.util.BookWriterConfig;
-import name.insearchof.util.InventoryUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -19,7 +18,7 @@ import org.jetbrains.annotations.NotNull;
 
 
 public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
-    private static final int TITLE_MAX_LENGTH = 128;
+    private static final int TITLE_MAX_LENGTH = BookLayout.MAX_TITLE_LENGTH;
     private static final int TEXT_MAX_LENGTH = 1000000;
 
     private static String storedText = "";
@@ -137,18 +136,15 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
         }
 
         int booksNeeded = BookLayout.calculateBooksNeededForChars(text.length());
-        int booksAvailable = InventoryUtils.countWritableBooks(client.player);
+        int booksAvailable = BookWriter.findAvailableBooks(client.player).size();
 
         if (booksAvailable < booksNeeded) {
-            Component message = Component
-                    .literal(String.format("Not enough books! Need: %d, Have: %d", booksNeeded, booksAvailable))
-                    .withStyle(ChatFormatting.RED);
-                client.gui.hud.setOverlayMessage(message, false);
+            client.gui.hud.setOverlayMessage(BookWriter.notEnoughBooks(booksNeeded, booksAvailable), false);
             Minecraft.getInstance().setScreenAndShow(null);
             return;
         }
 
-        BookWriterEvents.WRITE_BOOK.invoker().onWriteBook(client.player, title, text);
+        BookWriter.writeAndSignBook(title, text, client.player);
         storedText = text;
         storedTitle = title;
         Minecraft.getInstance().setScreenAndShow(null);
@@ -164,7 +160,7 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
             return;
         }
 
-        int booksAvailable = InventoryUtils.countWritableBooks(client.player);
+        int booksAvailable = BookWriter.findAvailableBooks(client.player).size();
         Component message = formatCalculateMessage(booksNeeded, booksAvailable, totalPages);
         client.gui.hud.setOverlayMessage(message, false);
         Minecraft.getInstance().setScreenAndShow(null);
@@ -177,14 +173,18 @@ public class BookWriterUI extends BaseOwoScreen<FlowLayout> {
 
     private Component formatCalculateMessage(int booksNeeded, int booksAvailable, int totalPages) {
         if (booksAvailable < booksNeeded) {
-            return Component
-                    .literal(String.format("Not enough books! Need: %d, Have: %d", booksNeeded, booksAvailable))
-                    .withStyle(ChatFormatting.RED);
+            return BookWriter.notEnoughBooks(booksNeeded, booksAvailable);
         }
         double seconds = BookLayout.estimateSeconds(booksNeeded, BookWriterConfig.getDelaySeconds());
         return Component
                 .literal(String.format("Books Needed: %d (%d pages), about %.0f seconds", booksNeeded, totalPages, seconds))
                 .withStyle(ChatFormatting.GREEN);
+    }
+
+    @Override
+    public void removed() {
+        super.removed();
+        BookWriterConfig.save();
     }
 
     @Override

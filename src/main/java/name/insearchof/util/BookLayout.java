@@ -11,21 +11,28 @@ import java.util.List;
 public class BookLayout {
     public static final int CHARS_PER_PAGE = 256;
     public static final int MAX_PAGES_PER_BOOK = 100;
+    public static final int MAX_TITLE_LENGTH = 32;
 
     private BookLayout() {
         // Utility class
     }
 
     /**
-     * Splits text into pages of at most {@link #CHARS_PER_PAGE} characters.
+     * Splits text into pages of at most {@link #CHARS_PER_PAGE} characters, never inside a surrogate pair.
      * Empty text gives one empty page.
      */
     public static String[] splitIntoPages(String text) {
         List<String> pages = new ArrayList<>();
 
-        for (int i = 0; i < text.length(); i += CHARS_PER_PAGE) {
+        int i = 0;
+        while (i < text.length()) {
             int endPos = Math.min(i + CHARS_PER_PAGE, text.length());
+            // Do not cut an emoji (two chars) in half
+            if (endPos < text.length() && Character.isHighSurrogate(text.charAt(endPos - 1))) {
+                endPos--;
+            }
             pages.add(text.substring(i, endPos));
+            i = endPos;
         }
 
         return pages.isEmpty() ? new String[]{""} : pages.toArray(new String[0]);
@@ -54,13 +61,13 @@ public class BookLayout {
     }
 
     /**
-     * @return the title of a book; books of a multi-book text get a " (Part N)" suffix
+     * @return the title of a book, at most {@link #MAX_TITLE_LENGTH} characters (the limit of the book packet);
+     * books of a multi-book text get a " (Part N)" suffix, and the base title is shortened to make room for it
      */
     public static String formatBookTitle(String baseTitle, int bookIndex, int totalBooks) {
-        if (totalBooks == 1) {
-            return baseTitle;
-        }
-        return baseTitle + " (Part " + (bookIndex + 1) + ")";
+        String suffix = totalBooks == 1 ? "" : " (Part " + (bookIndex + 1) + ")";
+        int room = MAX_TITLE_LENGTH - suffix.length();
+        return baseTitle.substring(0, Math.min(baseTitle.length(), room)) + suffix;
     }
 
     /**

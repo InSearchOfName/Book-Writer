@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
 public class BookWriter {
@@ -22,6 +23,7 @@ public class BookWriter {
     private static final long SIGN_POLL_MS = 50;
     private static final long SETTLE_MS = 250;
     private static final int SWAP_ATTEMPTS = 3;
+    private static final AtomicBoolean WRITING = new AtomicBoolean();
 
     private BookWriter() {
         // Utility class
@@ -40,11 +42,7 @@ public class BookWriter {
 
         int booksNeeded = BookLayout.calculateBooksNeeded(pages.length);
         if (bookSlots.size() < booksNeeded) {
-            notifyPlayer(
-                Component
-                    .literal(String.format("Not enough books! Need: %d, Have: %d", booksNeeded, bookSlots.size()))
-                    .withStyle(ChatFormatting.RED)
-            );
+            notifyPlayer(notEnoughBooks(booksNeeded, bookSlots.size()));
             return;
         }
 
@@ -54,33 +52,53 @@ public class BookWriter {
 
     private static void writeAsync(String title, String[] pages, List<BookSlots.Step> steps,
                                    Player player, int booksNeeded, long delayMs) {
+        if (!WRITING.compareAndSet(false, true)) {
+            notifyPlayer(Component.literal("Already writing books, wait until that is done").withStyle(ChatFormatting.RED));
+            return;
+        }
+
         new Thread(() -> {
-            notifyPlayer( Component.literal("Stand still while writing books...").withStyle(ChatFormatting.GOLD));
-
-            for (int bookIndex = 0; bookIndex < booksNeeded; bookIndex++) {
-                int startPage = bookIndex * BookLayout.MAX_PAGES_PER_BOOK;
-                int endPage = Math.min(startPage + BookLayout.MAX_PAGES_PER_BOOK, pages.length);
-
-                String bookTitle = BookLayout.formatBookTitle(title, bookIndex, booksNeeded);
-                List<String> bookPages = BookLayout.extractPages(pages, startPage, endPage);
-
-                BookSlots.Step step = steps.get(bookIndex);
-                if (step.needsSwap()) {
-                    moveIntoHotbar(player, step);
-                }
-                sendBookPacket(step.writeSlot(), bookPages, bookTitle);
-
-                notifyPlayer(
-                    Component.literal(String.format("Book %d of %d written", bookIndex + 1, booksNeeded)).withStyle(ChatFormatting.GOLD)
-                );
-
-                if (bookIndex < booksNeeded - 1) {
-                    delayNextWrite(delayMs);
-                }
+            try {
+                writeBooks(title, pages, steps, player, booksNeeded, delayMs);
+            } finally {
+                WRITING.set(false);
             }
-
-            completeWriting(player);
         }).start();
+    }
+
+    private static void writeBooks(String title, String[] pages, List<BookSlots.Step> steps,
+                                   Player player, int booksNeeded, long delayMs) {
+        notifyPlayer( Component.literal("Stand still while writing books...").withStyle(ChatFormatting.GOLD));
+
+        for (int bookIndex = 0; bookIndex < booksNeeded; bookIndex++) {
+            if (!isInWorld(player)) {
+                return;
+            }
+            int startPage = bookIndex * BookLayout.MAX_PAGES_PER_BOOK;
+            int endPage = Math.min(startPage + BookLayout.MAX_PAGES_PER_BOOK, pages.length);
+
+            String bookTitle = BookLayout.formatBookTitle(title, bookIndex, booksNeeded);
+            List<String> bookPages = BookLayout.extractPages(pages, startPage, endPage);
+
+            BookSlots.Step step = steps.get(bookIndex);
+            if (step.needsSwap() && !moveIntoHotbar(player, step)) {
+                notifyPlayer(
+                    Component.literal(String.format("Could not move book %d into the hotbar, stopped", bookIndex + 1)).withStyle(ChatFormatting.RED)
+                );
+                return;
+            }
+            sendBookPacket(step.writeSlot(), bookPages, bookTitle);
+
+            notifyPlayer(
+                Component.literal(String.format("Book %d of %d written", bookIndex + 1, booksNeeded)).withStyle(ChatFormatting.GOLD)
+            );
+
+            if (bookIndex < booksNeeded - 1) {
+                sleep(delayMs);
+            }
+        }
+
+        completeWriting(player);
     }
 
     private static Set<Integer> findEmptyHotbarSlots(Player player) {
@@ -93,7 +111,16 @@ public class BookWriter {
         return slots;
     }
 
-    private static List<Integer> findAvailableBooks(Player player) {
+    /**
+     * @return the red message that tells the player more books are needed
+     */
+    public static Component notEnoughBooks(int needed, int have) {
+        return Component
+            .literal(String.format("Not enough books! Need: %d, Have: %d", needed, have))
+            .withStyle(ChatFormatting.RED);
+    }
+
+    public static List<Integer> findAvailableBooks(Player player) {
         List<Integer> slots = new ArrayList<>();
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
             ItemStack stack = player.getInventory().getItem(i);
@@ -106,33 +133,47 @@ public class BookWriter {
 
     /**
      * Swaps a book from the main inventory into the hotbar slot it is written in, and makes sure that worked.
+     *
+     * @return whether the book is in the hotbar slot, ready to be written
      * The server can ignore a swap that is sent while it is still syncing the inventory after the previous
      * book (the packet then carries an outdated state), so the swap is checked and repeated if needed.
      */
-    private static void moveIntoHotbar(Player player, BookSlots.Step step) {
+    private static boolean moveIntoHotbar(Player player, BookSlots.Step step) {
         // The previous book in this slot must be signed first, or the swap would move it out unsigned
-        waitUntil(() -> !isWritableBook(player, step.writeSlot()));
+        if (!waitUntil(() -> !isInWorld(player) || !isWritableBook(player, step.writeSlot()))) {
+            return false;
+        }
 
-        for (int attempt = 0; attempt < SWAP_ATTEMPTS; attempt++) {
+        for (int attempt = 0; attempt < SWAP_ATTEMPTS && isInWorld(player); attempt++) {
             sleep(SETTLE_MS);
             swapIntoHotbar(player, step.bookSlot(), step.writeSlot());
             sleep(SETTLE_MS);
 
             if (isWritableBook(player, step.writeSlot())) {
-                return;
+                return true;
             }
         }
+        return false;
+    }
+
+    /** False once the player left the world (disconnect or world change), so a running write stops. */
+    private static boolean isInWorld(Player player) {
+        return Minecraft.getInstance().player == player;
     }
 
     private static boolean isWritableBook(Player player, int slot) {
         return Minecraft.getInstance().submit(() -> player.getInventory().getItem(slot).is(Items.WRITABLE_BOOK)).join();
     }
 
-    private static void waitUntil(BooleanSupplier condition) {
+    private static boolean waitUntil(BooleanSupplier condition) {
         long deadline = System.currentTimeMillis() + SIGN_TIMEOUT_MS;
-        while (!condition.getAsBoolean() && System.currentTimeMillis() < deadline) {
+        while (!condition.getAsBoolean()) {
+            if (System.currentTimeMillis() >= deadline) {
+                return false;
+            }
             sleep(SIGN_POLL_MS);
         }
+        return true;
     }
 
     private static void sleep(long millis) {
@@ -167,14 +208,6 @@ public class BookWriter {
 
     private static void notifyPlayer( Component message) {
         Minecraft.getInstance().execute(() -> Minecraft.getInstance().gui.hud.setOverlayMessage(message, false));
-    }
-
-    private static void delayNextWrite(long delayMs) {
-        try {
-            Thread.sleep(delayMs);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
     }
 
     private static void completeWriting(Player player) {

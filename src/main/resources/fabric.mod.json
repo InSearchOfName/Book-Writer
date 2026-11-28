@@ -8,27 +8,18 @@
     "Tommy (InSearchOfName)"
   ],
   "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
+    "homepage": "https://github.com/InSearchOfName/Book-Writer",
+    "sources": "https://github.com/InSearchOfName/Book-Writer",
+    "issues": "https://github.com/InSearchOfName/Book-Writer/issues"
   },
   "license": "Apache-2.0",
   "icon": "assets/book-writer/icon.png",
-  "environment": "*",
+  "environment": "client",
   "entrypoints": {
-    "main": [
-      "name.insearchof.BookWriter"
-    ],
     "client": [
       "name.insearchof.BookWriterClient"
     ]
   },
-  "mixins": [
-    "book-writer.mixins.json",
-    {
-      "config": "book-writer.client.mixins.json",
-      "environment": "client"
-    }
-  ],
   "depends": {
     "fabricloader": ">=0.19.2",
     "minecraft": "~26.2",
